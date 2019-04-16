@@ -34,7 +34,7 @@ func (pq *DistQueueClosestFirst) Reserve(n int) {
 }
 
 // Push the value item into the priority queue with provided priority.
-func (pq *DistQueueClosestFirst) Push(id uint32, d float32) *Item {
+func (pq *DistQueueClosestFirst) Push(id uint32, d float32, filter []string) *Item {
 	if !pq.initiated {
 		pq.Init()
 	}
