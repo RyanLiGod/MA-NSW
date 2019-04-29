@@ -1,17 +1,15 @@
 package main
 
 import (
+	hnsw ".."
 	"fmt"
+	"github.com/grd/stat"
 	"math/rand"
 	"time"
-
-	"github.com/grd/stat"
-
-	hnsw ".."
 )
 
 // NUM 元素数量
-var NUM = 50000
+var NUM = 1000
 
 // DIMENSION 元素维度
 var DIMENSION = 128
@@ -33,18 +31,26 @@ func main() {
 	h := hnsw.New(M, efConstruction, zero)
 	h.Grow(NUM)
 
+	provinces := []string{"浙江省", "江西省", "安徽省"}
+	types := []string{"高校", "企业", "其他"}
+
+
 	for i := 1; i <= NUM; i++ {
-		h.BalancedAdd(randomPoint(), uint32(i))
+		h.Add(randomPoint(), uint32(i), []string{provinces[rand.Intn(3)], types[rand.Intn(3)]})
 		// h.Add(randomPoint(), uint32(i))
 		if (i)%1000 == 0 {
 			fmt.Printf("%v points added\n", i)
 		}
 	}
+	fmt.Println(h.GetAttributeLink())
+
 	// h.Save("BalancedAdd_100000p_128d_64M_1000efc.ind")
 
 	// h, timestamp := hnsw.Load("BalancedAdd_50000p_128d_100M_2000efc.ind")
 	// h, timestamp := hnsw.Load("Add_50000p_128d_100M_2000efc.ind")
 	// fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
+
+
 
 	fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
 	queries := make([]hnsw.Point, TESTNUM)
@@ -66,7 +72,7 @@ func main() {
 	start := time.Now()
 	for i := 0; i < TESTNUM; i++ {
 		startSearch := time.Now()
-		result := h.Search(queries[i], efSearch, K)
+		result := h.Search(queries[i], efSearch, K, []string{provinces[rand.Intn(3)], types[rand.Intn(3)]})
 		stopSearch := time.Since(startSearch)
 		timeRecord[i] = stopSearch.Seconds() * 1000
 		for j := 0; j < K; j++ {
@@ -77,7 +83,9 @@ func main() {
 				}
 			}
 		}
+		fmt.Println(result)
 	}
+
 	stop := time.Since(start)
 
 	data := stat.Float64Slice(timeRecord)
@@ -89,7 +97,7 @@ func main() {
 	fmt.Printf("%v queries / second (single thread)\n", 1000.0/stop.Seconds())
 	fmt.Printf("Average 10-NN precision: %v\n", float64(hits)/(1000.0*float64(K)))
 	fmt.Printf("\n")
-	fmt.Printf(h.Stats())
+	//fmt.Printf(h.Stats())
 }
 
 func randomPoint() hnsw.Point {
