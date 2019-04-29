@@ -360,6 +360,10 @@ func (h *Hnsw) GetAttributeLink() AttributeLink {
 	return h.attributeLink
 }
 
+func (h *Hnsw) GetNodes() []node {
+	return h.nodes
+}
+
 func New(M int, efConstruction int, first Point) *Hnsw {
 
 	h := Hnsw{}
@@ -443,49 +447,11 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 	newID := id
 	newNode := node{p: q, friends: make(map[int][]uint32)}
 
-	resultSet := &distqueue.DistQueueClosestLast{}
-	h.searchAtLayer(q, resultSet, h.efConstruction, ep, 0)
-	switch h.DelaunayType {
-	case 0:
-		// shrink resultSet to M closest elements (the simple heuristic)
-		for resultSet.Len() > h.M {
-			resultSet.Pop()
-		}
-	case 1:
-		h.getNeighborsByHeuristicClosestLast(resultSet, h.M)
-	}
-	newNode.friends[0] = make([]uint32, resultSet.Len())
-	for i := resultSet.Len() - 1; i >= 0; i-- {
-		item := resultSet.Pop()
-		// store in order, closest at index 0
-		newNode.friends[0][i] = item.ID
-	}
-
-	h.Lock()
-	// Add it and increase slice length if neccessary
-	if len(h.nodes) < int(newID)+1 {
-		h.nodes = h.nodes[0 : newID+1]
-	}
-	h.nodes[newID] = newNode
-	h.Unlock()
-
-	// now add connections to newNode from newNodes neighbours (makes it visible in the graph)
-	//for level := min(curlevel, currentMaxLayer); level >= 0; level-- {
-	//	for _, n := range newNode.friends[level] {
-	//		h.Link(n, newID, level)
-	//	}
-	//}
-
-	for _, n := range newNode.friends[0] {
-		h.Link(n, newID, 0)
-	}
-
 	n := uint(len(attributes))
-
 	var maxCount uint = 1 << n
 	var i uint
 	var j uint
-	for i = 1; i < maxCount; i++ {
+	for i = 0; i < maxCount; i++ {
 		attrString := ""
 		for j = 0; j < n; j++ {
 			if (i & (1 << j)) != 0 {
@@ -498,14 +464,54 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 			}
 		}
 
+		attrID := 0
 		if _, ok := h.attributeLink.attrString[attrString]; ok {
-			attrID := h.attributeLink.attrString[attrString]
+			attrID = h.attributeLink.attrString[attrString]
 			h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
 		} else {
-			h.attributeLink.IDCount += 1
-			attrID := h.attributeLink.IDCount
+			attrID = h.attributeLink.IDCount
 			h.attributeLink.attrString[attrString] = attrID
 			h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
+			h.attributeLink.IDCount += 1
+		}
+
+		resultSet := &distqueue.DistQueueClosestLast{}
+		h.searchAtLayer(q, resultSet, h.efConstruction, ep, attrID)
+		switch h.DelaunayType {
+		case 0:
+			// shrink resultSet to M closest elements (the simple heuristic)
+			for resultSet.Len() > h.M {
+				resultSet.Pop()
+			}
+		case 1:
+			h.getNeighborsByHeuristicClosestLast(resultSet, h.M)
+		}
+
+
+		newNode.friends[attrID] = make([]uint32, resultSet.Len())
+		for i := resultSet.Len() - 1; i >= 0; i-- {
+			item := resultSet.Pop()
+			// store in order, closest at index 0
+			newNode.friends[attrID][i] = item.ID
+		}
+
+		h.Lock()
+		// Add it and increase slice length if neccessary
+		if len(h.nodes) < int(newID)+1 {
+			h.nodes = h.nodes[0 : newID+1]
+		}
+		h.nodes[newID] = newNode
+		h.Unlock()
+
+		// now add connections to newNode from newNodes neighbours (makes it visible in the graph)
+		//for level := min(curlevel, currentMaxLayer); level >= 0; level-- {
+		//	for _, n := range newNode.friends[level] {
+		//		h.Link(n, newID, level)
+		//	}
+		//}
+
+		for _, n := range newNode.friends[attrID] {
+			h.Link(n, newID, attrID)
 		}
 	}
 
@@ -615,6 +621,7 @@ func (h *Hnsw) Search(q Point, ef int, K int, attributes []string) *distqueue.Di
 	}
 	return resultSet
 }
+
 
 func min(a, b int) int {
 	if a < b {

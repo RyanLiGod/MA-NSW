@@ -12,7 +12,7 @@ import (
 var NUM = 1000
 
 // DIMENSION 元素维度
-var DIMENSION = 128
+var DIMENSION = 32
 
 // TESTNUM 测试数量
 var TESTNUM = 1000
@@ -20,8 +20,8 @@ var TESTNUM = 1000
 func main() {
 
 	const (
-		M              = 100
-		efConstruction = 1000
+		M              = 5
+		efConstruction = 10
 		efSearch       = 1000
 		K              = 10
 	)
@@ -77,14 +77,17 @@ func main() {
 		timeRecord[i] = stopSearch.Seconds() * 1000
 		for j := 0; j < K; j++ {
 			item := result.Pop()
+			//fmt.Println(item)
 			for k := 0; k < K; k++ {
 				if item.ID == truth[i][k] {
 					hits++
 				}
 			}
 		}
-		fmt.Println(result)
+		//fmt.Println()
 	}
+
+	fmt.Println(h.GetNodes()[221])
 
 	stop := time.Since(start)
 
