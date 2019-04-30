@@ -1,6 +1,6 @@
-# go-hnsw
+# MA-NSW
 
-go-hnsw is a GO implementation of the HNSW approximate nearest-neighbour search algorithm implemented in C++ in https://github.com/searchivarius/nmslib and described in https://arxiv.org/abs/1603.09320
+MA-NSW is a GO implementation of the **multiple attribute** NSW approximate nearest-neighbour search algorithm implemented in C++ in https://github.com/searchivarius/nmslib and described in https://arxiv.org/abs/1603.09320
 
 ## Usage
 
@@ -16,7 +16,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Bithack/go-hnsw"
+	hnsw ".."
 )
 
 func main() {
