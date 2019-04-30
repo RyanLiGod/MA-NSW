@@ -27,7 +27,7 @@ type node struct {
 type AttributeLink struct {
 	IDCount     int
 	attrString  map[string]int // map[string]int:该属性的ID
-	attrMap     map[int][]uint32 // int:属性的ID
+	//attrMap     map[int][]uint32 // int:属性的ID
 }
 
 type Hnsw struct {
@@ -382,7 +382,7 @@ func New(M int, efConstruction int, first Point) *Hnsw {
 	h.attributeLink = AttributeLink{
 		IDCount:     0,
 		attrString:  make(map[string]int),
-		attrMap:     make(map[int][]uint32),
+		//attrMap:     make(map[int][]uint32)
 	}
 
 	return &h
@@ -467,11 +467,11 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 		attrID := 0
 		if _, ok := h.attributeLink.attrString[attrString]; ok {
 			attrID = h.attributeLink.attrString[attrString]
-			h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
+			//h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
 		} else {
 			attrID = h.attributeLink.IDCount
 			h.attributeLink.attrString[attrString] = attrID
-			h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
+			//h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
 			h.attributeLink.IDCount += 1
 		}
 
@@ -613,8 +613,8 @@ func (h *Hnsw) Search(q Point, ef int, K int, attributes []string) *distqueue.Di
 		}
 	}
 
-	//attrID := h.attributeLink.attrString[attrString]
-	h.searchAtLayer(q, resultSet, ef, ep, 0)
+	attrID := h.attributeLink.attrString[attrString]
+	h.searchAtLayer(q, resultSet, ef, ep, attrID)
 
 	for resultSet.Len() > K {
 		resultSet.Pop()

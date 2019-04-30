@@ -9,19 +9,19 @@ import (
 )
 
 // NUM 元素数量
-var NUM = 1000
+var NUM = 5000
 
 // DIMENSION 元素维度
-var DIMENSION = 32
+var DIMENSION = 128
 
 // TESTNUM 测试数量
-var TESTNUM = 1000
+var TESTNUM = 5
 
 func main() {
 
 	const (
-		M              = 5
-		efConstruction = 10
+		M              = 32
+		efConstruction = 1000
 		efSearch       = 1000
 		K              = 10
 	)
@@ -33,10 +33,12 @@ func main() {
 
 	provinces := []string{"浙江省", "江西省", "安徽省"}
 	types := []string{"高校", "企业", "其他"}
+	titles := []string{"教授", "讲师"}
 
 
 	for i := 1; i <= NUM; i++ {
-		h.Add(randomPoint(), uint32(i), []string{provinces[rand.Intn(3)], types[rand.Intn(3)]})
+		randomAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
+		h.Add(randomPoint(), uint32(i), randomAttr)
 		// h.Add(randomPoint(), uint32(i))
 		if (i)%1000 == 0 {
 			fmt.Printf("%v points added\n", i)
@@ -72,7 +74,11 @@ func main() {
 	start := time.Now()
 	for i := 0; i < TESTNUM; i++ {
 		startSearch := time.Now()
-		result := h.Search(queries[i], efSearch, K, []string{provinces[rand.Intn(3)], types[rand.Intn(3)]})
+		searchAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
+		//result := h.Search(queries[i], efSearch, K, searchAttr)
+		result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
+		fmt.Print("Searching with attributes:")
+		fmt.Println(searchAttr)
 		stopSearch := time.Since(startSearch)
 		timeRecord[i] = stopSearch.Seconds() * 1000
 		for j := 0; j < K; j++ {
@@ -87,7 +93,7 @@ func main() {
 		//fmt.Println()
 	}
 
-	fmt.Println(h.GetNodes()[221])
+	//fmt.Println(h.GetNodes()[221])
 
 	stop := time.Since(start)
 
@@ -95,10 +101,10 @@ func main() {
 	mean := stat.Mean(data)
 	variance := stat.Variance(data)
 
-	fmt.Printf("Mean of queries time: %v\n", mean)
+	fmt.Printf("Mean of queries time(MS): %v\n", mean)
 	fmt.Printf("Variance of queries time: %v\n", variance)
 	fmt.Printf("%v queries / second (single thread)\n", 1000.0/stop.Seconds())
-	fmt.Printf("Average 10-NN precision: %v\n", float64(hits)/(1000.0*float64(K)))
+	fmt.Printf("Average 10-NN precision: %v\n", float64(hits)/(float64(TESTNUM)*float64(K)))
 	fmt.Printf("\n")
 	//fmt.Printf(h.Stats())
 }
