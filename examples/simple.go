@@ -9,13 +9,13 @@ import (
 )
 
 // NUM 元素数量
-var NUM = 5000
+var NUM = 1000
 
 // DIMENSION 元素维度
 var DIMENSION = 128
 
 // TESTNUM 测试数量
-var TESTNUM = 5
+var TESTNUM = 10
 
 func main() {
 
@@ -37,14 +37,19 @@ func main() {
 
 
 	for i := 1; i <= NUM; i++ {
+		//fmt.Println("--------------------")
+		//fmt.Println(i)
 		randomAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
+		//fmt.Println(randomAttr)
 		h.Add(randomPoint(), uint32(i), randomAttr)
 		// h.Add(randomPoint(), uint32(i))
 		if (i)%1000 == 0 {
 			fmt.Printf("%v points added\n", i)
 		}
+		//fmt.Println(h.GetNodes()[0])
 	}
 	fmt.Println(h.GetAttributeLink())
+	fmt.Println(h.GetNodes()[0])
 
 	// h.Save("BalancedAdd_100000p_128d_64M_1000efc.ind")
 
@@ -63,7 +68,6 @@ func main() {
 		truth[i] = make([]uint32, K)
 		for j := K - 1; j >= 0; j-- {
 			item := result.Pop()
-
 			truth[i][j] = item.ID
 		}
 	}
@@ -75,22 +79,23 @@ func main() {
 	for i := 0; i < TESTNUM; i++ {
 		startSearch := time.Now()
 		searchAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
-		//result := h.Search(queries[i], efSearch, K, searchAttr)
-		result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
+		result := h.Search(queries[i], efSearch, K, searchAttr)
+		//result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
 		fmt.Print("Searching with attributes:")
 		fmt.Println(searchAttr)
 		stopSearch := time.Since(startSearch)
 		timeRecord[i] = stopSearch.Seconds() * 1000
 		for j := 0; j < K; j++ {
 			item := result.Pop()
-			//fmt.Println(item)
+			fmt.Printf("%v  ", item)
+			fmt.Println(h.GetNodeAttr(item.ID))
 			for k := 0; k < K; k++ {
 				if item.ID == truth[i][k] {
 					hits++
 				}
 			}
 		}
-		//fmt.Println()
+		fmt.Println()
 	}
 
 	//fmt.Println(h.GetNodes()[221])

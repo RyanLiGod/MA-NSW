@@ -19,15 +19,17 @@ func (a Point) Size() int {
 
 type node struct {
 	sync.RWMutex
-	locked  bool
-	p       Point
-	friends map[int][]uint32 // int:属性的ID
+	locked     bool
+	p          Point
+	friends    map[int][]uint32 // int:属性的ID
+	attributes []string
 }
 
 type AttributeLink struct {
-	IDCount     int
-	attrString  map[string]int // map[string]int:该属性的ID
+	IDCount    int
+	attrString map[string]int // map[string]int:该属性的ID
 	//attrMap     map[int][]uint32 // int:属性的ID
+
 }
 
 type Hnsw struct {
@@ -233,9 +235,9 @@ func (h *Hnsw) Link(first, second uint32, attrID int) {
 	//	node.friends[attrID] = append(node.friends[attrID], second)
 	//}
 
-	if node.friends == nil {
-		node.friends = make(map[int][]uint32)
-	}
+	//if node.friends == nil {
+	//	node.friends = make(map[int][]uint32)
+	//}
 
 	if node.friends[attrID] == nil {
 		node.friends[attrID] = make([]uint32, 0)
@@ -377,11 +379,11 @@ func New(M int, efConstruction int, first Point) *Hnsw {
 	h.DistFunc = f32.L2Squared8AVX
 
 	// add first point, it will be our enterpoint (index 0)
-	h.nodes = []node{node{p: first}}
+	h.nodes = []node{node{p: first, friends: make(map[int][]uint32)}}
 
 	h.attributeLink = AttributeLink{
-		IDCount:     0,
-		attrString:  make(map[string]int),
+		IDCount:    0,
+		attrString: make(map[string]int),
 		//attrMap:     make(map[int][]uint32)
 	}
 
@@ -430,22 +432,22 @@ func (h *Hnsw) Grow(size int) {
 	h.nodes = newNodes
 }
 
+func (h *Hnsw) GetNodeAttr(id uint32) []string {
+	return h.nodes[id].attributes
+}
+
 func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 	if id == 0 {
 		panic("Id 0 is reserved, use ID:s starting from 1 when building index")
 	}
 
-	if len(h.nodes) == 1 {
-		h.enterpoint = 0
-	} else {
-		h.enterpoint = 1
-	}
+	h.enterpoint = 0
 
 	ep := &distqueue.Item{ID: h.enterpoint, D: h.DistFunc(h.nodes[h.enterpoint].p, q)}
 
 	// assume Grow has been called in advance
 	newID := id
-	newNode := node{p: q, friends: make(map[int][]uint32)}
+	newNode := node{p: q, friends: make(map[int][]uint32), attributes: attributes}
 
 	n := uint(len(attributes))
 	var maxCount uint = 1 << n
@@ -459,40 +461,46 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 			} else {
 				attrString += "nil"
 			}
-			if j < n - 1 {
+			if j < n-1 {
 				attrString += ";"
 			}
 		}
 
 		attrID := 0
 		if _, ok := h.attributeLink.attrString[attrString]; ok {
+			//if attrString != "nil;nil;nil" {
+			//	fmt.Print("存在ID:")
+			//	fmt.Println(attrString)
+			//}
 			attrID = h.attributeLink.attrString[attrString]
 			//h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
+
+			resultSet := &distqueue.DistQueueClosestLast{}
+			h.searchAtLayer(q, resultSet, h.efConstruction, ep, attrID)
+			switch h.DelaunayType {
+			case 0:
+				// shrink resultSet to M closest elements (the simple heuristic)
+				for resultSet.Len() > h.M {
+					resultSet.Pop()
+				}
+			case 1:
+				h.getNeighborsByHeuristicClosestLast(resultSet, h.M)
+			}
+
+			newNode.friends[attrID] = make([]uint32, resultSet.Len())
+			for i := resultSet.Len() - 1; i >= 0; i-- {
+				item := resultSet.Pop()
+				// store in order, closest at index 0
+				newNode.friends[attrID][i] = item.ID
+			}
 		} else {
+			//fmt.Print("插入新ID:")
+			//fmt.Println(attrString)
 			attrID = h.attributeLink.IDCount
 			h.attributeLink.attrString[attrString] = attrID
+			h.nodes[0].friends[attrID] = append(h.nodes[0].friends[attrID], newID)
 			//h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
 			h.attributeLink.IDCount += 1
-		}
-
-		resultSet := &distqueue.DistQueueClosestLast{}
-		h.searchAtLayer(q, resultSet, h.efConstruction, ep, attrID)
-		switch h.DelaunayType {
-		case 0:
-			// shrink resultSet to M closest elements (the simple heuristic)
-			for resultSet.Len() > h.M {
-				resultSet.Pop()
-			}
-		case 1:
-			h.getNeighborsByHeuristicClosestLast(resultSet, h.M)
-		}
-
-
-		newNode.friends[attrID] = make([]uint32, resultSet.Len())
-		for i := resultSet.Len() - 1; i >= 0; i-- {
-			item := resultSet.Pop()
-			// store in order, closest at index 0
-			newNode.friends[attrID][i] = item.ID
 		}
 
 		h.Lock()
@@ -540,6 +548,14 @@ func (h *Hnsw) searchAtLayer(q Point, resultSet *distqueue.DistQueueClosestLast,
 		}
 
 		friends := h.nodes[c.ID].friends[attrID]
+
+		//if attrID != 0{
+		//	fmt.Println(friends)
+		//	for _, item := range friends {
+		//		fmt.Println(h.nodes[item].attributes)
+		//	}
+		//}
+
 		for _, n := range friends {
 			if !visited.Test(uint(n)) {
 				visited.Set(uint(n))
@@ -608,12 +624,15 @@ func (h *Hnsw) Search(q Point, ef int, K int, attributes []string) *distqueue.Di
 	attrString := ""
 	for i, attr := range attributes {
 		attrString += attr
-		if i < len(attributes) - 1 {
+		if i < len(attributes)-1 {
 			attrString += ";"
 		}
 	}
 
 	attrID := h.attributeLink.attrString[attrString]
+	//fmt.Println("&&&&&&&")
+	//fmt.Println(attrString)
+	//fmt.Println(attrID)
 	h.searchAtLayer(q, resultSet, ef, ep, attrID)
 
 	for resultSet.Len() > K {
@@ -621,7 +640,6 @@ func (h *Hnsw) Search(q Point, ef int, K int, attributes []string) *distqueue.Di
 	}
 	return resultSet
 }
-
 
 func min(a, b int) int {
 	if a < b {
