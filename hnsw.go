@@ -630,9 +630,6 @@ func (h *Hnsw) Search(q Point, ef int, K int, attributes []string) *distqueue.Di
 	}
 
 	attrID := h.attributeLink.attrString[attrString]
-	//fmt.Println("&&&&&&&")
-	//fmt.Println(attrString)
-	//fmt.Println(attrID)
 	h.searchAtLayer(q, resultSet, ef, ep, attrID)
 
 	for resultSet.Len() > K {

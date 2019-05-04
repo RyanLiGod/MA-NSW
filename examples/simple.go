@@ -9,7 +9,7 @@ import (
 )
 
 // NUM 元素数量
-var NUM = 1000
+var NUM = 10000
 
 // DIMENSION 元素维度
 var DIMENSION = 128
@@ -20,8 +20,8 @@ var TESTNUM = 10
 func main() {
 
 	const (
-		M              = 32
-		efConstruction = 1000
+		M              = 16
+		efConstruction = 400
 		efSearch       = 1000
 		K              = 10
 	)
@@ -79,8 +79,8 @@ func main() {
 	for i := 0; i < TESTNUM; i++ {
 		startSearch := time.Now()
 		searchAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
-		result := h.Search(queries[i], efSearch, K, searchAttr)
-		//result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
+		//result := h.Search(queries[i], efSearch, K, searchAttr)
+		result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
 		fmt.Print("Searching with attributes:")
 		fmt.Println(searchAttr)
 		stopSearch := time.Since(startSearch)
