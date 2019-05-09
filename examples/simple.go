@@ -9,7 +9,7 @@ import (
 )
 
 // NUM 元素数量
-var NUM = 10000
+var NUM = 2000
 
 // DIMENSION 元素维度
 var DIMENSION = 128
@@ -79,22 +79,27 @@ func main() {
 	for i := 0; i < TESTNUM; i++ {
 		startSearch := time.Now()
 		searchAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
-		//result := h.Search(queries[i], efSearch, K, searchAttr)
-		result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
+		result := h.Search(queries[i], efSearch, K, searchAttr)
+		//result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
 		fmt.Print("Searching with attributes:")
 		fmt.Println(searchAttr)
 		stopSearch := time.Since(startSearch)
 		timeRecord[i] = stopSearch.Seconds() * 1000
-		for j := 0; j < K; j++ {
-			item := result.Pop()
-			fmt.Printf("%v  ", item)
-			fmt.Println(h.GetNodeAttr(item.ID))
-			for k := 0; k < K; k++ {
-				if item.ID == truth[i][k] {
-					hits++
+		if result.Size != 0 {
+			for j := 0; j < K; j++ {
+				item := result.Pop()
+				fmt.Printf("%v  ", item)
+				fmt.Println(h.GetNodeAttr(item.ID))
+				for k := 0; k < K; k++ {
+					if item.ID == truth[i][k] {
+						hits++
+					}
 				}
 			}
+		} else {
+			fmt.Println("Can't return any node")
 		}
+
 		fmt.Println()
 	}
 

@@ -29,7 +29,6 @@ type AttributeLink struct {
 	IDCount    int
 	attrString map[string]int // map[string]int:该属性的ID
 	//attrMap     map[int][]uint32 // int:属性的ID
-
 }
 
 type Hnsw struct {
@@ -629,13 +628,17 @@ func (h *Hnsw) Search(q Point, ef int, K int, attributes []string) *distqueue.Di
 		}
 	}
 
-	attrID := h.attributeLink.attrString[attrString]
-	h.searchAtLayer(q, resultSet, ef, ep, attrID)
+	if _, ok := h.attributeLink.attrString[attrString]; ok {
+		attrID := h.attributeLink.attrString[attrString]
+		h.searchAtLayer(q, resultSet, ef, ep, attrID)
 
-	for resultSet.Len() > K {
-		resultSet.Pop()
+		for resultSet.Len() > K {
+			resultSet.Pop()
+		}
+		return resultSet
+	} else {
+		return &distqueue.DistQueueClosestLast{Size: 0}
 	}
-	return resultSet
 }
 
 func min(a, b int) int {

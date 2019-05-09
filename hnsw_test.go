@@ -242,8 +242,7 @@ func buildFromChan(h *Hnsw, points chan job) {
 					wg.Done()
 					return
 				}
-				// h.Add(job.p, job.id)
-				h.BalancedAdd(job.p, job.id)
+				h.Add(job.p, job.id)
 			}
 		}()
 	}
