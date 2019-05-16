@@ -50,12 +50,12 @@ func main() {
 	}
 	fmt.Println(h.GetAttributeLink())
 	fmt.Println(h.GetNodes()[0])
-	fmt.Println(h)
+	//fmt.Println(h)
 
 	_ = h.Save("test.ind")
 
 	h, timestamp, _ := hnsw.Load("test.ind")
-	fmt.Println(h)
+	//fmt.Println(h)
 	// h, timestamp := hnsw.Load("BalancedAdd_50000p_128d_100M_2000efc.ind")
 	// h, timestamp := hnsw.Load("Add_50000p_128d_100M_2000efc.ind")
 	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))

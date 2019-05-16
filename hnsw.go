@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
@@ -191,8 +190,6 @@ func (h *Hnsw) Save(filename string) error {
 
 func writeAttrString(v map[string]int, w io.Writer) {
 	res, err := json.Marshal(&v)
-	fmt.Println("------------")
-	fmt.Println(res)
 	if err != nil {
 		panic(err)
 	}
