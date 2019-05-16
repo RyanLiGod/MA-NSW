@@ -9,7 +9,7 @@ import (
 )
 
 // NUM 元素数量
-var NUM = 100
+var NUM = 1000
 
 // DIMENSION 元素维度
 var DIMENSION = 128

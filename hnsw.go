@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
@@ -69,8 +70,9 @@ func Load(filename string) (*Hnsw, int64, error) {
 	h.DelaunayType = readInt32(z)
 	h.enterpoint = uint32(readInt32(z))
 
+	h.attributeLink.IDCount = readInt32(z)
 	l := int(readInt32(z))
-	h.attributeLink = readAttrLink(z, l)
+	h.attributeLink.attrString = readAttrString(z, l)
 
 	h.DistFunc = f32.L2Squared8AVX
 	h.bitset = bitsetpool.New()
@@ -79,34 +81,41 @@ func Load(filename string) (*Hnsw, int64, error) {
 	h.nodes = make([]node, l)
 
 	for i := range h.nodes {
-		l := int(readInt32(z))
-		h.nodes[i] = readNode(z, l)
-	}
 
-	//for i := range h.nodes {
-	//
-	//	l := readInt32(z)
-	//	h.nodes[i].p = make([]float32, l)
-	//
-	//	err = binary.Read(z, binary.LittleEndian, h.nodes[i].p)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	//h.nodes[i].level = readInt32(z)
-	//
-	//	l = readInt32(z)
-	//	h.nodes[i].friends = make(map[int][]uint32, l)
-	//
-	//	for j := range h.nodes[i].friends {
-	//		l := readInt32(z)
-	//		h.nodes[i].friends[j] = make([]uint32, l)
-	//		err = binary.Read(z, binary.LittleEndian, h.nodes[i].friends[j])
-	//		if err != nil {
-	//			panic(err)
-	//		}
-	//	}
-	//
-	//}
+		l := readInt32(z)
+		h.nodes[i].p = make([]float32, l)
+
+		err = binary.Read(z, binary.LittleEndian, h.nodes[i].p)
+		if err != nil {
+			panic(err)
+		}
+
+		l = readInt32(z)
+		bt := make([]byte, int(l))
+		err := binary.Read(z, binary.LittleEndian, &bt)
+		if err != nil {
+			panic(err)
+		}
+		var friends map[int][]uint32
+		err = json.Unmarshal(bt, &friends)
+		if err != nil {
+			panic(err)
+		}
+		h.nodes[i].friends = friends
+
+		l = readInt32(z)
+		bt = make([]byte, int(l))
+		err = binary.Read(z, binary.LittleEndian, &bt)
+		if err != nil {
+			panic(err)
+		}
+		var attributes []string
+		err = json.Unmarshal(bt, &attributes)
+		if err != nil {
+			panic(err)
+		}
+		h.nodes[i].attributes = attributes
+	}
 
 	_ = z.Close()
 	_ = f.Close()
@@ -131,35 +140,48 @@ func (h *Hnsw) Save(filename string) error {
 	writeInt32(h.linkMode, z)
 	writeInt32(h.DelaunayType, z)
 	writeInt32(int(h.enterpoint), z)
-	writeAttrLink(h.attributeLink, z)
+	writeInt32(h.attributeLink.IDCount, z)
+	writeAttrString(h.attributeLink.attrString, z)
 
 	l := len(h.nodes)
 	writeInt32(l, z)
 
 	for _, n := range h.nodes {
-		writeNode(n, z)
-	}
+		l := len(n.p)
+		writeInt32(l, z)
+		err = binary.Write(z, binary.LittleEndian, []float32(n.p))
+		if err != nil {
+			panic(err)
+		}
 
-	//for _, n := range h.nodes {
-	//	l := len(n.p)
-	//	writeInt32(l, z)
-	//	err = binary.Write(z, binary.LittleEndian, []float32(n.p))
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	//writeInt32(n.level, z)
-	//
-	//	l = len(n.friends)
-	//	writeInt32(l, z)
-	//	for _, f := range n.friends {
-	//		l := len(f)
-	//		writeInt32(l, z)
-	//		err = binary.Write(z, binary.LittleEndian, f)
-	//		if err != nil {
-	//			panic(err)
-	//		}
-	//	}
-	//}
+		// write friends
+		res, err := json.Marshal(n.friends)
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Write(z, binary.LittleEndian, int32(len(res)))
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Write(z, binary.LittleEndian, &res)
+		if err != nil {
+			panic(err)
+		}
+
+		// write attributes
+		res, err = json.Marshal(n.attributes)
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Write(z, binary.LittleEndian, int32(len(res)))
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Write(z, binary.LittleEndian, &res)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	_ = z.Close()
 	_ = f.Close()
@@ -167,9 +189,14 @@ func (h *Hnsw) Save(filename string) error {
 	return nil
 }
 
-func writeAttrLink(v AttributeLink, w io.Writer) {
-	res, _ := json.Marshal(&v)
-	err := binary.Write(w, binary.LittleEndian, int32(len(res)))
+func writeAttrString(v map[string]int, w io.Writer) {
+	res, err := json.Marshal(&v)
+	fmt.Println("------------")
+	fmt.Println(res)
+	if err != nil {
+		panic(err)
+	}
+	err = binary.Write(w, binary.LittleEndian, int32(len(res)))
 	if err != nil {
 		panic(err)
 	}
@@ -179,30 +206,18 @@ func writeAttrLink(v AttributeLink, w io.Writer) {
 	}
 }
 
-func readAttrLink(r io.Reader, lenByte int) AttributeLink {
+func readAttrString(r io.Reader, lenByte int) map[string]int {
 	i := make([]byte, int(lenByte))
 	err := binary.Read(r, binary.LittleEndian, &i)
 	if err != nil {
 		panic(err)
 	}
-	var attrLink AttributeLink
+	var attrLink map[string]int
 	err = json.Unmarshal(i, &attrLink)
 	if err != nil {
 		panic(err)
 	}
 	return attrLink
-}
-
-func writeNode(v node, w io.Writer) {
-	res, _ := json.Marshal(&v)
-	err := binary.Write(w, binary.LittleEndian, int32(len(res)))
-	if err != nil {
-		panic(err)
-	}
-	err = binary.Write(w, binary.LittleEndian, &res)
-	if err != nil {
-		panic(err)
-	}
 }
 
 func readNode(r io.Reader, lenByte int) node {
