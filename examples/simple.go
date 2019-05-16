@@ -9,7 +9,7 @@ import (
 )
 
 // NUM 元素数量
-var NUM = 2000
+var NUM = 100
 
 // DIMENSION 元素维度
 var DIMENSION = 128
@@ -50,12 +50,15 @@ func main() {
 	}
 	fmt.Println(h.GetAttributeLink())
 	fmt.Println(h.GetNodes()[0])
+	fmt.Println(h)
 
-	// h.Save("BalancedAdd_100000p_128d_64M_1000efc.ind")
+	_ = h.Save("test.ind")
 
+	h, timestamp, _ := hnsw.Load("test.ind")
+	fmt.Println(h)
 	// h, timestamp := hnsw.Load("BalancedAdd_50000p_128d_100M_2000efc.ind")
 	// h, timestamp := hnsw.Load("Add_50000p_128d_100M_2000efc.ind")
-	// fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
+	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 
 

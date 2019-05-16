@@ -1,7 +1,12 @@
 package hnsw
 
 import (
+	"compress/gzip"
 	"encoding/binary"
+	"encoding/json"
+	"os"
+	"time"
+
 	//"fmt"
 	"io"
 
@@ -45,112 +50,175 @@ type Hnsw struct {
 }
 
 // Load opens a index file previously written by Save(). Returnes a new index and the timestamp the file was written
-//func Load(filename string) (*Hnsw, int64, error) {
-//	f, err := os.Open(filename)
-//	if err != nil {
-//		return nil, 0, err
-//	}
-//	z, err := gzip.NewReader(f)
-//	if err != nil {
-//		return nil, 0, err
-//	}
-//
-//	timestamp := readInt64(z)
-//
-//	h := new(Hnsw)
-//	h.M = readInt32(z)
-//	h.efConstruction = readInt32(z)
-//	h.linkMode = readInt32(z)
-//	h.DelaunayType = readInt32(z)
-//	h.enterpoint = uint32(readInt32(z))
-//
-//	h.DistFunc = f32.L2Squared8AVX
-//	h.bitset = bitsetpool.New()
-//
-//	l := readInt32(z)
-//	h.nodes = make([]node, l)
-//
-//	for i := range h.nodes {
-//
-//		l := readInt32(z)
-//		h.nodes[i].p = make([]float32, l)
-//
-//		err = binary.Read(z, binary.LittleEndian, h.nodes[i].p)
-//		if err != nil {
-//			panic(err)
-//		}
-//		h.nodes[i].level = readInt32(z)
-//
-//		l = readInt32(z)
-//		h.nodes[i].friends = make([][]uint32, l)
-//
-//		for j := range h.nodes[i].friends {
-//			l := readInt32(z)
-//			h.nodes[i].friends[j] = make([]uint32, l)
-//			err = binary.Read(z, binary.LittleEndian, h.nodes[i].friends[j])
-//			if err != nil {
-//				panic(err)
-//			}
-//		}
-//
-//	}
-//
-//	z.Close()
-//	f.Close()
-//
-//	return h, timestamp, nil
-//}
+func Load(filename string) (*Hnsw, int64, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, 0, err
+	}
+	z, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	timestamp := readInt64(z)
+
+	h := new(Hnsw)
+	h.M = readInt32(z)
+	h.efConstruction = readInt32(z)
+	h.linkMode = readInt32(z)
+	h.DelaunayType = readInt32(z)
+	h.enterpoint = uint32(readInt32(z))
+
+	l := int(readInt32(z))
+	h.attributeLink = readAttrLink(z, l)
+
+	h.DistFunc = f32.L2Squared8AVX
+	h.bitset = bitsetpool.New()
+
+	l = readInt32(z)
+	h.nodes = make([]node, l)
+
+	for i := range h.nodes {
+		l := int(readInt32(z))
+		h.nodes[i] = readNode(z, l)
+	}
+
+	//for i := range h.nodes {
+	//
+	//	l := readInt32(z)
+	//	h.nodes[i].p = make([]float32, l)
+	//
+	//	err = binary.Read(z, binary.LittleEndian, h.nodes[i].p)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	//h.nodes[i].level = readInt32(z)
+	//
+	//	l = readInt32(z)
+	//	h.nodes[i].friends = make(map[int][]uint32, l)
+	//
+	//	for j := range h.nodes[i].friends {
+	//		l := readInt32(z)
+	//		h.nodes[i].friends[j] = make([]uint32, l)
+	//		err = binary.Read(z, binary.LittleEndian, h.nodes[i].friends[j])
+	//		if err != nil {
+	//			panic(err)
+	//		}
+	//	}
+	//
+	//}
+
+	_ = z.Close()
+	_ = f.Close()
+
+	return h, timestamp, nil
+}
 
 // Save writes to current index to a gzipped binary data file
-//func (h *Hnsw) Save(filename string) error {
-//	f, err := os.Create(filename)
-//	if err != nil {
-//		return err
-//	}
-//	z := gzip.NewWriter(f)
-//
-//	timestamp := time.Now().Unix()
-//
-//	writeInt64(timestamp, z)
-//
-//	writeInt32(h.M, z)
-//	writeInt32(h.efConstruction, z)
-//	writeInt32(h.linkMode, z)
-//	writeInt32(h.DelaunayType, z)
-//	writeInt32(int(h.enterpoint), z)
-//
-//	l := len(h.nodes)
-//	writeInt32(l, z)
-//
-//	if err != nil {
-//		return err
-//	}
-//	for _, n := range h.nodes {
-//		l := len(n.p)
-//		writeInt32(l, z)
-//		err = binary.Write(z, binary.LittleEndian, []float32(n.p))
-//		if err != nil {
-//			panic(err)
-//		}
-//		writeInt32(n.level, z)
-//
-//		l = len(n.friends)
-//		writeInt32(l, z)
-//		for _, f := range n.friends {
-//			l := len(f)
-//			writeInt32(l, z)
-//			err = binary.Write(z, binary.LittleEndian, f)
-//			if err != nil {
-//				panic(err)
-//			}
-//		}
-//	}
-//
-//	z.Close()
-//	f.Close()
-//
-//	return nil
-//}
+func (h *Hnsw) Save(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	z := gzip.NewWriter(f)
+
+	timestamp := time.Now().Unix()
+
+	writeInt64(timestamp, z)
+
+	writeInt32(h.M, z)
+	writeInt32(h.efConstruction, z)
+	writeInt32(h.linkMode, z)
+	writeInt32(h.DelaunayType, z)
+	writeInt32(int(h.enterpoint), z)
+	writeAttrLink(h.attributeLink, z)
+
+	l := len(h.nodes)
+	writeInt32(l, z)
+
+	for _, n := range h.nodes {
+		writeNode(n, z)
+	}
+
+	//for _, n := range h.nodes {
+	//	l := len(n.p)
+	//	writeInt32(l, z)
+	//	err = binary.Write(z, binary.LittleEndian, []float32(n.p))
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	//writeInt32(n.level, z)
+	//
+	//	l = len(n.friends)
+	//	writeInt32(l, z)
+	//	for _, f := range n.friends {
+	//		l := len(f)
+	//		writeInt32(l, z)
+	//		err = binary.Write(z, binary.LittleEndian, f)
+	//		if err != nil {
+	//			panic(err)
+	//		}
+	//	}
+	//}
+
+	_ = z.Close()
+	_ = f.Close()
+
+	return nil
+}
+
+func writeAttrLink(v AttributeLink, w io.Writer) {
+	res, _ := json.Marshal(&v)
+	err := binary.Write(w, binary.LittleEndian, int32(len(res)))
+	if err != nil {
+		panic(err)
+	}
+	err = binary.Write(w, binary.LittleEndian, &res)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func readAttrLink(r io.Reader, lenByte int) AttributeLink {
+	i := make([]byte, int(lenByte))
+	err := binary.Read(r, binary.LittleEndian, &i)
+	if err != nil {
+		panic(err)
+	}
+	var attrLink AttributeLink
+	err = json.Unmarshal(i, &attrLink)
+	if err != nil {
+		panic(err)
+	}
+	return attrLink
+}
+
+func writeNode(v node, w io.Writer) {
+	res, _ := json.Marshal(&v)
+	err := binary.Write(w, binary.LittleEndian, int32(len(res)))
+	if err != nil {
+		panic(err)
+	}
+	err = binary.Write(w, binary.LittleEndian, &res)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func readNode(r io.Reader, lenByte int) node {
+	i := make([]byte, int(lenByte))
+	err := binary.Read(r, binary.LittleEndian, &i)
+	if err != nil {
+		panic(err)
+	}
+	var node_ node
+	err = json.Unmarshal(i, &node_)
+	if err != nil {
+		panic(err)
+	}
+	return node_
+}
+
 
 func writeInt64(v int64, w io.Writer) {
 	err := binary.Write(w, binary.LittleEndian, &v)
@@ -199,11 +267,8 @@ func readFloat64(r io.Reader) (v float64) {
 	return
 }
 
-func (h *Hnsw) getFriends(n uint32, level int) []uint32 {
-	if len(h.nodes[n].friends) < level+1 {
-		return make([]uint32, 0)
-	}
-	return h.nodes[n].friends[level]
+func (h *Hnsw) getFriends(n uint32, attrID int) []uint32 {
+	return h.nodes[n].friends[attrID]
 }
 
 func (h *Hnsw) Link(first, second uint32, attrID int) {
