@@ -9,7 +9,7 @@ import (
 )
 
 // NUM 元素数量
-var NUM = 1000
+var NUM = 3000
 
 // DIMENSION 元素维度
 var DIMENSION = 128
@@ -35,7 +35,6 @@ func main() {
 	types := []string{"高校", "企业", "其他"}
 	titles := []string{"教授", "讲师"}
 
-
 	for i := 1; i <= NUM; i++ {
 		//fmt.Println("--------------------")
 		//fmt.Println(i)
@@ -51,14 +50,14 @@ func main() {
 	fmt.Println(h.GetAttributeLink())
 	fmt.Println(h.GetNodes()[0])
 	//fmt.Println(h)
+	
+	_ = h.Save("test2.ind")
 
-	_ = h.Save("test.ind")
-
-	h, timestamp, _ := hnsw.Load("test.ind")
+	// h, timestamp, _ := hnsw.Load("test.ind")
 	//fmt.Println(h)
 	// h, timestamp := hnsw.Load("BalancedAdd_50000p_128d_100M_2000efc.ind")
 	// h, timestamp := hnsw.Load("Add_50000p_128d_100M_2000efc.ind")
-	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
+	// fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 
 
@@ -78,7 +77,7 @@ func main() {
 	fmt.Printf("Now searching with HNSW...\n")
 	timeRecord := make([]float64, TESTNUM)
 	hits := 0
-	start := time.Now()
+	// start := time.Now()
 	for i := 0; i < TESTNUM; i++ {
 		startSearch := time.Now()
 		searchAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
@@ -108,7 +107,7 @@ func main() {
 
 	//fmt.Println(h.GetNodes()[221])
 
-	stop := time.Since(start)
+	// stop := time.Since(start)
 
 	data := stat.Float64Slice(timeRecord)
 	mean := stat.Mean(data)
@@ -116,7 +115,7 @@ func main() {
 
 	fmt.Printf("Mean of queries time(MS): %v\n", mean)
 	fmt.Printf("Variance of queries time: %v\n", variance)
-	fmt.Printf("%v queries / second (single thread)\n", 1000.0/stop.Seconds())
+	fmt.Printf("%v queries / second (single thread)\n", 1000.0/mean)
 	fmt.Printf("Average 10-NN precision: %v\n", float64(hits)/(float64(TESTNUM)*float64(K)))
 	fmt.Printf("\n")
 	//fmt.Printf(h.Stats())

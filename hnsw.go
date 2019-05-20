@@ -89,6 +89,7 @@ func Load(filename string) (*Hnsw, int64, error) {
 			panic(err)
 		}
 
+		// Read friends
 		l = readInt32(z)
 		bt := make([]byte, int(l))
 		err := binary.Read(z, binary.LittleEndian, &bt)
@@ -102,6 +103,7 @@ func Load(filename string) (*Hnsw, int64, error) {
 		}
 		h.nodes[i].friends = friends
 
+		// Read attributes (can be deleted in product mode)
 		l = readInt32(z)
 		bt = make([]byte, int(l))
 		err = binary.Read(z, binary.LittleEndian, &bt)
@@ -153,7 +155,7 @@ func (h *Hnsw) Save(filename string) error {
 			panic(err)
 		}
 
-		// write friends
+		// Write friends
 		res, err := json.Marshal(n.friends)
 		if err != nil {
 			panic(err)
@@ -167,7 +169,7 @@ func (h *Hnsw) Save(filename string) error {
 			panic(err)
 		}
 
-		// write attributes
+		// Write attributes (can be deleted in product mode)
 		res, err = json.Marshal(n.attributes)
 		if err != nil {
 			panic(err)
@@ -216,21 +218,6 @@ func readAttrString(r io.Reader, lenByte int) map[string]int {
 	}
 	return attrLink
 }
-
-func readNode(r io.Reader, lenByte int) node {
-	i := make([]byte, int(lenByte))
-	err := binary.Read(r, binary.LittleEndian, &i)
-	if err != nil {
-		panic(err)
-	}
-	var node_ node
-	err = json.Unmarshal(i, &node_)
-	if err != nil {
-		panic(err)
-	}
-	return node_
-}
-
 
 func writeInt64(v int64, w io.Writer) {
 	err := binary.Write(w, binary.LittleEndian, &v)
