@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
@@ -33,7 +34,6 @@ type node struct {
 type AttributeLink struct {
 	IDCount    int
 	attrString map[string]int // map[string]int:该属性的ID
-	//attrMap     map[int][]uint32 // int:属性的ID
 }
 
 type Hnsw struct {
@@ -49,7 +49,7 @@ type Hnsw struct {
 	attributeLink  AttributeLink
 }
 
-// Load opens a index file previously written by Save(). Returnes a new index and the timestamp the file was written
+// Load opens a index file previously written by Save(). Returns a new index and the timestamp the file was written
 func Load(filename string) (*Hnsw, int64, error) {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -453,37 +453,45 @@ func New(M int, efConstruction int, first Point) *Hnsw {
 	return &h
 }
 
-//func (h *Hnsw) Stats() string {
-//	s := "HNSW Index\n"
-//	s = s + fmt.Sprintf("M: %v, efConstruction: %v\n", h.M, h.efConstruction)
-//	s = s + fmt.Sprintf("DelaunayType: %v\n", h.DelaunayType)
-//	s = s + fmt.Sprintf("Number of nodes: %v\n", len(h.nodes))
-//	s = s + fmt.Sprintf("Max layer: %v\n", h.maxLayer)
-//	memoryUseData := 0
-//	memoryUseIndex := 0
-//	levCount := make([]int, h.maxLayer+1)
-//	conns := make([]int, h.maxLayer+1)
-//	connsC := make([]int, h.maxLayer+1)
-//	for i := range h.nodes {
-//		levCount[h.nodes[i].level]++
-//		for j := 0; j <= h.nodes[i].level; j++ {
-//			if len(h.nodes[i].friends) > j {
-//				l := len(h.nodes[i].friends[j])
-//				conns[j] += l
-//				connsC[j]++
-//			}
-//		}
-//		memoryUseData += h.nodes[i].p.Size()
-//		memoryUseIndex += h.nodes[i].level*h.M*4 + h.M0*4
-//	}
-//	for i := range levCount {
-//		avg := conns[i] / max(1, connsC[i])
-//		s = s + fmt.Sprintf("Level %v: %v nodes, average number of connections %v\n", i, levCount[i], avg)
-//	}
-//	s = s + fmt.Sprintf("Memory use for data: %v (%v bytes / point)\n", memoryUseData, memoryUseData/len(h.nodes))
-//	s = s + fmt.Sprintf("Memory use for index: %v (avg %v bytes / point)\n", memoryUseIndex, memoryUseIndex/len(h.nodes))
-//	return s
-//}
+func (h *Hnsw) Stats() string {
+	s := "MA-NSW Index\n"
+	s = s + fmt.Sprintf("M: %v, efConstruction: %v\n", h.M, h.efConstruction)
+	s = s + fmt.Sprintf("DelaunayType: %v\n", h.DelaunayType)
+	s = s + fmt.Sprintf("Number of nodes: %v\n", len(h.nodes)-1)
+	attrNum := h.attributeLink.IDCount
+	memoryUseData := 0
+	memoryUseIndex := 0
+	attrCount := make(map[string]int, attrNum)
+	//conns := make(map[int]int, attrNum)
+	//connsC := make(map[int]int, attrNum)
+	for i := range h.nodes {
+		attrString := ""
+		for m, attr := range h.nodes[i].attributes {
+			attrString += attr
+			if m < len(h.nodes[i].attributes)-1 {
+				attrString += ";"
+			}
+		}
+		//attrID := h.attributeLink.attrString[attrString]
+		if attrString != "" {
+			attrCount[attrString]++
+		}
+		//for k := range h.nodes[i].friends {
+		//	l := len(h.nodes[i].friends[k])
+		//	conns[k] += l
+		//	connsC[k]++
+		//}
+		memoryUseData += h.nodes[i].p.Size()
+		memoryUseIndex += len(h.nodes[i].friends)*h.M*4
+	}
+	for i := range attrCount {
+		//avg := conns[i] / max(1, connsC[i])
+		s = s + fmt.Sprintf("Attributes %v: %v nodes\n", i, attrCount[i])
+	}
+	s = s + fmt.Sprintf("Memory use for data: %v (%v bytes / point)\n", memoryUseData, memoryUseData/len(h.nodes))
+	s = s + fmt.Sprintf("Memory use for index: %v (avg %v bytes / point)\n", memoryUseIndex, memoryUseIndex/len(h.nodes))
+	return s
+}
 
 func (h *Hnsw) Grow(size int) {
 	// fmt.Println(h.nodes)
@@ -639,9 +647,12 @@ func (h *Hnsw) searchAtLayer(q Point, resultSet *distqueue.DistQueueClosestLast,
 }
 
 // SearchBrute returns the true K nearest neigbours to search point q
-func (h *Hnsw) SearchBrute(q Point, K int) *distqueue.DistQueueClosestLast {
+func (h *Hnsw) SearchBrute(q Point, K int, attributes []string) *distqueue.DistQueueClosestLast {
 	resultSet := &distqueue.DistQueueClosestLast{Size: K}
 	for i := 1; i < len(h.nodes); i++ {
+		if !StringSliceEqual(h.nodes[i].attributes, attributes) {
+			continue
+		}
 		d := h.DistFunc(h.nodes[i].p, q)
 		if resultSet.Len() < K {
 			resultSet.Push(uint32(i), d)
@@ -659,7 +670,7 @@ func (h *Hnsw) SearchBrute(q Point, K int) *distqueue.DistQueueClosestLast {
 // Benchmark test precision by comparing the results of SearchBrute and Search
 func (h *Hnsw) Benchmark(q Point, ef int, K int, attributes []string) float64 {
 	result := h.Search(q, ef, K, attributes)
-	groundTruth := h.SearchBrute(q, K)
+	groundTruth := h.SearchBrute(q, K, attributes)
 	truth := make([]uint32, 0)
 	for groundTruth.Len() > 0 {
 		truth = append(truth, groundTruth.Pop().ID)
@@ -717,4 +728,23 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func StringSliceEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	if (a == nil) != (b == nil) {
+		return false
+	}
+
+	b = b[:len(a)]
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+
+	return true
 }

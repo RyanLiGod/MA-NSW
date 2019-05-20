@@ -22,7 +22,7 @@ func main() {
 	const (
 		M              = 16
 		efConstruction = 400
-		efSearch       = 1000
+		efSearch       = 400
 		K              = 10
 	)
 
@@ -60,27 +60,25 @@ func main() {
 	// fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 
-
-	fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
-	queries := make([]hnsw.Point, TESTNUM)
-	truth := make([][]uint32, TESTNUM)
-	for i := range queries {
-		queries[i] = randomPoint()
-		result := h.SearchBrute(queries[i], K)
-		truth[i] = make([]uint32, K)
-		for j := K - 1; j >= 0; j-- {
-			item := result.Pop()
-			truth[i][j] = item.ID
-		}
-	}
-
 	fmt.Printf("Now searching with HNSW...\n")
 	timeRecord := make([]float64, TESTNUM)
 	hits := 0
 	// start := time.Now()
 	for i := 0; i < TESTNUM; i++ {
-		startSearch := time.Now()
 		searchAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
+		fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
+		queries := make([]hnsw.Point, TESTNUM)
+		truth := make([][]uint32, TESTNUM)
+		for i := range queries {
+			queries[i] = randomPoint()
+			result := h.SearchBrute(queries[i], K, searchAttr)
+			truth[i] = make([]uint32, K)
+			for j := K - 1; j >= 0; j-- {
+				item := result.Pop()
+				truth[i][j] = item.ID
+			}
+		}
+		startSearch := time.Now()
 		result := h.Search(queries[i], efSearch, K, searchAttr)
 		//result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
 		fmt.Print("Searching with attributes:")
@@ -118,7 +116,7 @@ func main() {
 	fmt.Printf("%v queries / second (single thread)\n", 1000.0/mean)
 	fmt.Printf("Average 10-NN precision: %v\n", float64(hits)/(float64(TESTNUM)*float64(K)))
 	fmt.Printf("\n")
-	//fmt.Printf(h.Stats())
+	fmt.Printf(h.Stats())
 }
 
 func randomPoint() hnsw.Point {
