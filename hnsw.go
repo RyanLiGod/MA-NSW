@@ -514,8 +514,6 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 
 	h.enterpoint = 0
 
-	ep := &distqueue.Item{ID: h.enterpoint, D: h.DistFunc(h.nodes[h.enterpoint].p, q)}
-
 	// assume Grow has been called in advance
 	newID := id
 	newNode := node{p: q, friends: make(map[int][]uint32), attributes: attributes}
@@ -547,6 +545,12 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 			//h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
 
 			resultSet := &distqueue.DistQueueClosestLast{}
+
+			epID := h.nodes[h.enterpoint].friends[attrID][0]
+			h.RLock()
+			ep := &distqueue.Item{ID: epID, D: h.DistFunc(h.nodes[epID].p, q)}
+			h.RUnlock()
+
 			h.searchAtLayer(q, resultSet, h.efConstruction, ep, attrID)
 			switch h.DelaunayType {
 			case 0:
@@ -682,10 +686,6 @@ func (h *Hnsw) Benchmark(q Point, ef int, K int, attributes []string) float64 {
 
 func (h *Hnsw) Search(q Point, ef int, K int, attributes []string) *distqueue.DistQueueClosestLast {
 
-	h.RLock()
-	ep := &distqueue.Item{ID: h.enterpoint, D: h.DistFunc(h.nodes[h.enterpoint].p, q)}
-	h.RUnlock()
-
 	resultSet := &distqueue.DistQueueClosestLast{Size: ef + 1}
 
 	attrString := ""
@@ -698,6 +698,10 @@ func (h *Hnsw) Search(q Point, ef int, K int, attributes []string) *distqueue.Di
 
 	if _, ok := h.attributeLink.attrString[attrString]; ok {
 		attrID := h.attributeLink.attrString[attrString]
+		epID := h.nodes[h.enterpoint].friends[attrID][0]
+		h.RLock()
+		ep := &distqueue.Item{ID: epID, D: h.DistFunc(h.nodes[epID].p, q)}
+		h.RUnlock()
 		h.searchAtLayer(q, resultSet, ef, ep, attrID)
 
 		for resultSet.Len() > K {

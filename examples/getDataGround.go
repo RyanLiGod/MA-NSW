@@ -20,7 +20,7 @@ func main() {
 	const (
 		NUM      = 10000
 		TESTNUM  = 100
-		efSearch = 100
+		efSearch = 1000
 		K        = 100
 		//NUM      = 1000000
 		//TESTNUM  = 10000
@@ -28,18 +28,17 @@ func main() {
 		//K        = 1000
 
 		DIMENSION      = 128
-		M              = 64
-		efConstruction = 1000
+		M              = 16
+		efConstruction = 200
 	)
-
 
 	prefix := preType + "_ma/" + preType
 
 	points := loadBaseData(prefix)
 	queries = loadQueryData(prefix, TESTNUM)
 
-	var zero hnsw.Point = make([]float32, DIMENSION)
-	h := hnsw.New(M, efConstruction, zero)
+	p := make([]float32, 128)
+	h := hnsw.New(M, efConstruction, p)
 	h.Grow(NUM)
 
 	for i := 1; i <= NUM; i++ {
@@ -48,7 +47,7 @@ func main() {
 			fmt.Printf("%v points added\n", i)
 		}
 	}
-
+	//fmt.Println(h.GetNodes()[0])
 
 	fmt.Printf("Now searching with HNSW...\n")
 	timeRecord := make([]float64, TESTNUM)
@@ -95,10 +94,17 @@ func main() {
 				//fmt.Printf("%v  ", item)
 				if item != nil {
 					//fmt.Println(h.GetNodeAttr(item.ID))
+					var flag = 0
 					for k := 0; k < K; k++ {
 						if item.ID == truth[i][k] {
 							hits++
+							flag = 1
+							break
 						}
+					}
+					if flag == 0 {
+						fmt.Printf("Can't match: %v, i: %v, attr: %v", item.ID, i, queries[i].attr)
+						fmt.Println()
 					}
 				}
 			}
@@ -106,7 +112,7 @@ func main() {
 			fmt.Println("Can't return any node")
 		}
 
-		fmt.Println()
+		//fmt.Println()
 	}
 
 	data := stat.Float64Slice(timeRecord)
@@ -116,16 +122,16 @@ func main() {
 	fmt.Printf("Mean of queries time(MS): %v\n", mean)
 	fmt.Printf("Variance of queries time: %v\n", variance)
 	fmt.Printf("%v queries / second (single thread)\n", 1000.0/mean)
-	fmt.Printf("Average 10-NN precision: %v\n", float64(hits)/(float64(TESTNUM)*float64(K)))
+	fmt.Printf("Average %v-NN precision: %v\n", K, float64(hits)/(float64(TESTNUM)*float64(K)))
 	fmt.Printf("\n")
 	fmt.Printf(h.Stats())
 
 }
 
 type job struct {
-	p  []float32
+	p    []float32
 	attr []string
-	id uint32
+	id   uint32
 }
 
 func loadBaseData(prefix string) (points []job) {
