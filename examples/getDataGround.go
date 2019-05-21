@@ -28,15 +28,15 @@ func main() {
 		//K        = 1000
 
 		DIMENSION      = 128
-		M              = 8
-		efConstruction = 100
+		M              = 64
+		efConstruction = 1000
 	)
 
 
 	prefix := preType + "_ma/" + preType
 
 	points := loadBaseData(prefix)
-	queries = loadQueryData(prefix)
+	queries = loadQueryData(prefix, TESTNUM)
 
 	var zero hnsw.Point = make([]float32, DIMENSION)
 	h := hnsw.New(M, efConstruction, zero)
@@ -55,7 +55,7 @@ func main() {
 	hits := 0
 
 	fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
-	truth := make([][]uint32, len(queries))
+	truth := make([][]uint32, TESTNUM)
 	for i := range queries {
 		//if (i)%10 == 0 {
 		//	fmt.Printf("Calculating using bruteforce search: %v\n", i)
@@ -64,12 +64,12 @@ func main() {
 		truth[i] = make([]uint32, K)
 		for j := K - 1; j >= 0; j-- {
 			item := result.Pop()
-			if item != nil {
-				truth[i][j] = item.ID
-			}
+			truth[i][j] = item.ID
+
 		}
 	}
 
+	//// Save ground truth to file
 	//var fileTruth = prefix + "_groundtruth.txt"
 	//f, _ := os.Create(fileTruth)
 	//for _, line := range truth {
@@ -82,11 +82,10 @@ func main() {
 	//	_, _ = io.WriteString(f, "\n")
 	//}
 
-
 	for i := 0; i < TESTNUM; i++ {
 		startSearch := time.Now()
 		result := h.Search(queries[i].p, efSearch, K, queries[i].attr)
-		fmt.Print("Searching with attributes:")
+		//fmt.Print("Searching with attributes:")
 		//fmt.Println(attrQuery[i])
 		stopSearch := time.Since(startSearch)
 		timeRecord[i] = stopSearch.Seconds() * 1000
@@ -155,7 +154,7 @@ func loadBaseData(prefix string) (points []job) {
 	return
 }
 
-func loadQueryData(prefix string) (queries []job) {
+func loadQueryData(prefix string, len int) (queries []job) {
 	f, err := os.Open(prefix + "_query.txt")
 	if err != nil {
 		panic("couldn't open data file")
@@ -163,7 +162,7 @@ func loadQueryData(prefix string) (queries []job) {
 	defer f.Close()
 	s := bufio.NewScanner(f)
 	count := 0
-	queries = make([]job, 10000)
+	queries = make([]job, len)
 	for s.Scan() {
 		list := strings.Split(s.Text(), " ")
 		vec := make([]float32, 128)
