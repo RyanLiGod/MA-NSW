@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/grd/stat"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -12,10 +13,13 @@ import (
 )
 
 func main() {
-	preType := "siftsmall"
-	NUM := 10000
+	//preType := "siftsmall"
+	//NUM := 10000
+	//TESTNUM := 100
+	preType := "sift"
+	NUM := 1000000
+	TESTNUM := 10000
 	DIMENSION := 128
-	TESTNUM := 100
 	prefix := preType + "_ma/" + preType
 
 	f1, _ := os.Open(prefix + "_base.txt")
@@ -56,9 +60,9 @@ func main() {
 	}
 
 	const (
-		M              = 16
-		efConstruction = 400
-		efSearch       = 200
+		M              = 4
+		efConstruction = 50
+		efSearch       = 100
 		K              = 100
 	)
 
@@ -77,7 +81,7 @@ func main() {
 	timeRecord := make([]float64, TESTNUM)
 	hits := 0
 	for i := 0; i < TESTNUM; i++ {
-		fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
+		//fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
 		truth := make([][]uint32, TESTNUM)
 		for i := range dataQuery {
 			result := h.SearchBrute(dataQuery[i], K, attrQuery[i])
@@ -87,17 +91,29 @@ func main() {
 				truth[i][j] = item.ID
 			}
 		}
+		var fileTruth = prefix + "_groundtruth.txt"
+		f, _ := os.Create(fileTruth)
+		for _, line := range truth {
+			for i, v := range line {
+				_, _ = io.WriteString(f, strconv.FormatUint(uint64(v), 10))
+				if i < len(line)-1 {
+					_, _ = io.WriteString(f, " ")
+				}
+			}
+			_, _ = io.WriteString(f, "\n")
+		}
 		startSearch := time.Now()
 		result := h.Search(dataQuery[i], efSearch, K, attrQuery[i])
-		fmt.Print("Searching with attributes:")
+		//fmt.Print("Searching with attributes:")
+		//fmt.Println(attrQuery[i])
 		stopSearch := time.Since(startSearch)
 		timeRecord[i] = stopSearch.Seconds() * 1000
 		if result.Size != 0 {
 			for j := 0; j < K; j++ {
 				item := result.Pop()
-				fmt.Printf("%v  ", item)
+				//fmt.Printf("%v  ", item)
 				if item != nil {
-					fmt.Println(h.GetNodeAttr(item.ID))
+					//fmt.Println(h.GetNodeAttr(item.ID))
 					for k := 0; k < K; k++ {
 						if item.ID == truth[i][k] {
 							hits++
@@ -109,7 +125,7 @@ func main() {
 			fmt.Println("Can't return any node")
 		}
 
-		fmt.Println()
+		//fmt.Println()
 	}
 
 	data := stat.Float64Slice(timeRecord)

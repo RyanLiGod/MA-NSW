@@ -16,7 +16,7 @@ def fvecs_read(fname):
 
 
 if __name__ == "__main__":
-    pre_type = "siftsmall"
+    pre_type = "sift"
     data_type = ["base", "query", "learn"]
     prefix = pre_type + "/" + pre_type
     ma_prefix = "./" + pre_type + "_ma/" + pre_type
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     attr_3 = ["boy", "girl"]
     data = []
     for t in data_type:
-        data.append(fvecs_read(prefix + "_" + data_type + ".fvecs"))
+        data.append(fvecs_read(prefix + "_" + t + ".fvecs"))
 
     # Write base, query, learn
     for i, t in enumerate(data_type):
