@@ -14,12 +14,21 @@ import (
 
 func main() {
 	//preType := "siftsmall"
-	//NUM := 10000
-	//TESTNUM := 100
 	preType := "sift"
-	NUM := 1000000
-	TESTNUM := 10000
-	DIMENSION := 128
+
+	const (
+		//NUM     = 10000
+		//TESTNUM = 100
+		NUM            = 1000000
+		TESTNUM        = 10000
+
+		DIMENSION      = 128
+		M              = 2
+		efConstruction = 10
+		efSearch       = TESTNUM
+		K              = TESTNUM
+	)
+
 	prefix := preType + "_ma/" + preType
 
 	f1, _ := os.Open(prefix + "_base.txt")
@@ -59,13 +68,6 @@ func main() {
 		dataCount++
 	}
 
-	const (
-		M              = 4
-		efConstruction = 50
-		efSearch       = 100
-		K              = 100
-	)
-
 	var zero hnsw.Point = make([]float32, DIMENSION)
 	h := hnsw.New(M, efConstruction, zero)
 	h.Grow(NUM)
@@ -81,6 +83,9 @@ func main() {
 	timeRecord := make([]float64, TESTNUM)
 	hits := 0
 	for i := 0; i < TESTNUM; i++ {
+		if (i)%1000 == 0 {
+			fmt.Printf("Calculating using bruteforce search: %v\n", i)
+		}
 		//fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
 		truth := make([][]uint32, TESTNUM)
 		for i := range dataQuery {
