@@ -22,8 +22,8 @@ func main() {
 	const (
 		M              = 16
 		efConstruction = 400
-		efSearch       = 400
-		K              = 10
+		efSearch       = 100
+		K              = 100
 	)
 
 	var zero hnsw.Point = make([]float32, DIMENSION)
@@ -47,11 +47,11 @@ func main() {
 		}
 		//fmt.Println(h.GetNodes()[0])
 	}
-	fmt.Println(h.GetAttributeLink())
-	fmt.Println(h.GetNodes()[0])
+	//fmt.Println(h.GetAttributeLink())
+	//fmt.Println(h.GetNodes()[0])
 	//fmt.Println(h)
 	
-	_ = h.Save("test2.ind")
+	//_ = h.Save("test2.ind")
 
 	// h, timestamp, _ := hnsw.Load("test.ind")
 	//fmt.Println(h)
@@ -89,10 +89,12 @@ func main() {
 			for j := 0; j < K; j++ {
 				item := result.Pop()
 				fmt.Printf("%v  ", item)
-				fmt.Println(h.GetNodeAttr(item.ID))
-				for k := 0; k < K; k++ {
-					if item.ID == truth[i][k] {
-						hits++
+				if item != nil {
+					fmt.Println(h.GetNodeAttr(item.ID))
+					for k := 0; k < K; k++ {
+						if item.ID == truth[i][k] {
+							hits++
+						}
 					}
 				}
 			}

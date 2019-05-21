@@ -620,13 +620,6 @@ func (h *Hnsw) searchAtLayer(q Point, resultSet *distqueue.DistQueueClosestLast,
 
 		friends := h.nodes[c.ID].friends[attrID]
 
-		//if attrID != 0{
-		//	fmt.Println(friends)
-		//	for _, item := range friends {
-		//		fmt.Println(h.nodes[item].attributes)
-		//	}
-		//}
-
 		for _, n := range friends {
 			if !visited.Test(uint(n)) {
 				visited.Set(uint(n))
@@ -650,7 +643,7 @@ func (h *Hnsw) searchAtLayer(q Point, resultSet *distqueue.DistQueueClosestLast,
 func (h *Hnsw) SearchBrute(q Point, K int, attributes []string) *distqueue.DistQueueClosestLast {
 	resultSet := &distqueue.DistQueueClosestLast{Size: K}
 	for i := 1; i < len(h.nodes); i++ {
-		if !StringSliceEqual(h.nodes[i].attributes, attributes) {
+		if !stringSliceEqual(h.nodes[i].attributes, attributes) {
 			continue
 		}
 		d := h.DistFunc(h.nodes[i].p, q)
@@ -730,7 +723,7 @@ func max(a, b int) int {
 	return b
 }
 
-func StringSliceEqual(a, b []string) bool {
+func stringSliceEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}

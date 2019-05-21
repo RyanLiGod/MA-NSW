@@ -1,5 +1,5 @@
-sift
-siftsmall
+sift*
+siftsmall*
 src/
 *.ind
 .idea
