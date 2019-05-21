@@ -4,9 +4,11 @@ import (
 	hnsw ".."
 	"bufio"
 	"fmt"
+	"github.com/grd/stat"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -37,8 +39,8 @@ func main() {
 	}
 
 	s2 := bufio.NewScanner(f2)
-	dataQuery := make([][]float32, NUM)
-	attrQuery := make([][]string, NUM)
+	dataQuery := make([][]float32, TESTNUM)
+	attrQuery := make([][]string, TESTNUM)
 	dataCount = 0
 	for s2.Scan() {
 		list := strings.Split(s2.Text(), " ")
@@ -56,6 +58,7 @@ func main() {
 	const (
 		M              = 16
 		efConstruction = 400
+		efSearch       = 200
 		K              = 100
 	)
 
@@ -71,5 +74,53 @@ func main() {
 	}
 
 	fmt.Printf("Now searching with HNSW...\n")
+	timeRecord := make([]float64, TESTNUM)
+	hits := 0
+	for i := 0; i < TESTNUM; i++ {
+		fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
+		truth := make([][]uint32, TESTNUM)
+		for i := range dataQuery {
+			result := h.SearchBrute(dataQuery[i], K, attrQuery[i])
+			truth[i] = make([]uint32, K)
+			for j := K - 1; j >= 0; j-- {
+				item := result.Pop()
+				truth[i][j] = item.ID
+			}
+		}
+		startSearch := time.Now()
+		result := h.Search(dataQuery[i], efSearch, K, attrQuery[i])
+		fmt.Print("Searching with attributes:")
+		stopSearch := time.Since(startSearch)
+		timeRecord[i] = stopSearch.Seconds() * 1000
+		if result.Size != 0 {
+			for j := 0; j < K; j++ {
+				item := result.Pop()
+				fmt.Printf("%v  ", item)
+				if item != nil {
+					fmt.Println(h.GetNodeAttr(item.ID))
+					for k := 0; k < K; k++ {
+						if item.ID == truth[i][k] {
+							hits++
+						}
+					}
+				}
+			}
+		} else {
+			fmt.Println("Can't return any node")
+		}
+
+		fmt.Println()
+	}
+
+	data := stat.Float64Slice(timeRecord)
+	mean := stat.Mean(data)
+	variance := stat.Variance(data)
+
+	fmt.Printf("Mean of queries time(MS): %v\n", mean)
+	fmt.Printf("Variance of queries time: %v\n", variance)
+	fmt.Printf("%v queries / second (single thread)\n", 1000.0/mean)
+	fmt.Printf("Average 10-NN precision: %v\n", float64(hits)/(float64(TESTNUM)*float64(K)))
+	fmt.Printf("\n")
+	fmt.Printf(h.Stats())
 
 }
