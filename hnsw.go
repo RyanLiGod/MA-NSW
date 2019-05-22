@@ -1,13 +1,9 @@
 package hnsw
 
 import (
-	"compress/gzip"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"os"
-	"time"
-
 	//"fmt"
 	"io"
 
@@ -27,13 +23,13 @@ type node struct {
 	sync.RWMutex
 	locked     bool
 	p          Point
-	friends    map[int][]uint32 // int:属性的ID
+	friends    sync.Map // map[int][]uint32 int:属性的ID
 	attributes []string
 }
 
 type AttributeLink struct {
 	IDCount    int
-	attrString map[string]int // map[string]int:该属性的ID
+	attrString sync.Map // map[string]int int:该属性的ID
 }
 
 type Hnsw struct {
@@ -50,145 +46,145 @@ type Hnsw struct {
 }
 
 // Load opens a index file previously written by Save(). Returns a new index and the timestamp the file was written
-func Load(filename string) (*Hnsw, int64, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, 0, err
-	}
-	z, err := gzip.NewReader(f)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	timestamp := readInt64(z)
-
-	h := new(Hnsw)
-	h.M = readInt32(z)
-	h.efConstruction = readInt32(z)
-	h.linkMode = readInt32(z)
-	h.DelaunayType = readInt32(z)
-	h.enterpoint = uint32(readInt32(z))
-
-	h.attributeLink.IDCount = readInt32(z)
-	l := int(readInt32(z))
-	h.attributeLink.attrString = readAttrString(z, l)
-
-	h.DistFunc = f32.L2Squared8AVX
-	h.bitset = bitsetpool.New()
-
-	l = readInt32(z)
-	h.nodes = make([]node, l)
-
-	for i := range h.nodes {
-
-		l := readInt32(z)
-		h.nodes[i].p = make([]float32, l)
-
-		err = binary.Read(z, binary.LittleEndian, h.nodes[i].p)
-		if err != nil {
-			panic(err)
-		}
-
-		// Read friends
-		l = readInt32(z)
-		bt := make([]byte, int(l))
-		err := binary.Read(z, binary.LittleEndian, &bt)
-		if err != nil {
-			panic(err)
-		}
-		var friends map[int][]uint32
-		err = json.Unmarshal(bt, &friends)
-		if err != nil {
-			panic(err)
-		}
-		h.nodes[i].friends = friends
-
-		// Read attributes (can be deleted in product mode)
-		l = readInt32(z)
-		bt = make([]byte, int(l))
-		err = binary.Read(z, binary.LittleEndian, &bt)
-		if err != nil {
-			panic(err)
-		}
-		var attributes []string
-		err = json.Unmarshal(bt, &attributes)
-		if err != nil {
-			panic(err)
-		}
-		h.nodes[i].attributes = attributes
-	}
-
-	_ = z.Close()
-	_ = f.Close()
-
-	return h, timestamp, nil
-}
+//func Load(filename string) (*Hnsw, int64, error) {
+//	f, err := os.Open(filename)
+//	if err != nil {
+//		return nil, 0, err
+//	}
+//	z, err := gzip.NewReader(f)
+//	if err != nil {
+//		return nil, 0, err
+//	}
+//
+//	timestamp := readInt64(z)
+//
+//	h := new(Hnsw)
+//	h.M = readInt32(z)
+//	h.efConstruction = readInt32(z)
+//	h.linkMode = readInt32(z)
+//	h.DelaunayType = readInt32(z)
+//	h.enterpoint = uint32(readInt32(z))
+//
+//	h.attributeLink.IDCount = readInt32(z)
+//	l := int(readInt32(z))
+//	h.attributeLink.attrString = readAttrString(z, l)
+//
+//	h.DistFunc = f32.L2Squared8AVX
+//	h.bitset = bitsetpool.New()
+//
+//	l = readInt32(z)
+//	h.nodes = make([]node, l)
+//
+//	for i := range h.nodes {
+//
+//		l := readInt32(z)
+//		h.nodes[i].p = make([]float32, l)
+//
+//		err = binary.Read(z, binary.LittleEndian, h.nodes[i].p)
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		// Read friends
+//		l = readInt32(z)
+//		bt := make([]byte, int(l))
+//		err := binary.Read(z, binary.LittleEndian, &bt)
+//		if err != nil {
+//			panic(err)
+//		}
+//		var friends map[int][]uint32
+//		err = json.Unmarshal(bt, &friends)
+//		if err != nil {
+//			panic(err)
+//		}
+//		h.nodes[i].friends = friends
+//
+//		// Read attributes (can be deleted in product mode)
+//		l = readInt32(z)
+//		bt = make([]byte, int(l))
+//		err = binary.Read(z, binary.LittleEndian, &bt)
+//		if err != nil {
+//			panic(err)
+//		}
+//		var attributes []string
+//		err = json.Unmarshal(bt, &attributes)
+//		if err != nil {
+//			panic(err)
+//		}
+//		h.nodes[i].attributes = attributes
+//	}
+//
+//	_ = z.Close()
+//	_ = f.Close()
+//
+//	return h, timestamp, nil
+//}
 
 // Save writes to current index to a gzipped binary data file
-func (h *Hnsw) Save(filename string) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	z := gzip.NewWriter(f)
-
-	timestamp := time.Now().Unix()
-
-	writeInt64(timestamp, z)
-
-	writeInt32(h.M, z)
-	writeInt32(h.efConstruction, z)
-	writeInt32(h.linkMode, z)
-	writeInt32(h.DelaunayType, z)
-	writeInt32(int(h.enterpoint), z)
-	writeInt32(h.attributeLink.IDCount, z)
-	writeAttrString(h.attributeLink.attrString, z)
-
-	l := len(h.nodes)
-	writeInt32(l, z)
-
-	for _, n := range h.nodes {
-		l := len(n.p)
-		writeInt32(l, z)
-		err = binary.Write(z, binary.LittleEndian, []float32(n.p))
-		if err != nil {
-			panic(err)
-		}
-
-		// Write friends
-		res, err := json.Marshal(n.friends)
-		if err != nil {
-			panic(err)
-		}
-		err = binary.Write(z, binary.LittleEndian, int32(len(res)))
-		if err != nil {
-			panic(err)
-		}
-		err = binary.Write(z, binary.LittleEndian, &res)
-		if err != nil {
-			panic(err)
-		}
-
-		// Write attributes (can be deleted in product mode)
-		res, err = json.Marshal(n.attributes)
-		if err != nil {
-			panic(err)
-		}
-		err = binary.Write(z, binary.LittleEndian, int32(len(res)))
-		if err != nil {
-			panic(err)
-		}
-		err = binary.Write(z, binary.LittleEndian, &res)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	_ = z.Close()
-	_ = f.Close()
-
-	return nil
-}
+//func (h *Hnsw) Save(filename string) error {
+//	f, err := os.Create(filename)
+//	if err != nil {
+//		return err
+//	}
+//	z := gzip.NewWriter(f)
+//
+//	timestamp := time.Now().Unix()
+//
+//	writeInt64(timestamp, z)
+//
+//	writeInt32(h.M, z)
+//	writeInt32(h.efConstruction, z)
+//	writeInt32(h.linkMode, z)
+//	writeInt32(h.DelaunayType, z)
+//	writeInt32(int(h.enterpoint), z)
+//	writeInt32(h.attributeLink.IDCount, z)
+//	writeAttrString(h.attributeLink.attrString, z)
+//
+//	l := len(h.nodes)
+//	writeInt32(l, z)
+//
+//	for _, n := range h.nodes {
+//		l := len(n.p)
+//		writeInt32(l, z)
+//		err = binary.Write(z, binary.LittleEndian, []float32(n.p))
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		// Write friends
+//		res, err := json.Marshal(n.friends)
+//		if err != nil {
+//			panic(err)
+//		}
+//		err = binary.Write(z, binary.LittleEndian, int32(len(res)))
+//		if err != nil {
+//			panic(err)
+//		}
+//		err = binary.Write(z, binary.LittleEndian, &res)
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		// Write attributes (can be deleted in product mode)
+//		res, err = json.Marshal(n.attributes)
+//		if err != nil {
+//			panic(err)
+//		}
+//		err = binary.Write(z, binary.LittleEndian, int32(len(res)))
+//		if err != nil {
+//			panic(err)
+//		}
+//		err = binary.Write(z, binary.LittleEndian, &res)
+//		if err != nil {
+//			panic(err)
+//		}
+//	}
+//
+//	_ = z.Close()
+//	_ = f.Close()
+//
+//	return nil
+//}
 
 func writeAttrString(v map[string]int, w io.Writer) {
 	res, err := json.Marshal(&v)
@@ -267,7 +263,8 @@ func readFloat64(r io.Reader) (v float64) {
 }
 
 func (h *Hnsw) getFriends(n uint32, attrID int) []uint32 {
-	return h.nodes[n].friends[attrID]
+	_friends, _ := h.nodes[n].friends.Load(attrID)
+	return _friends.([]uint32)
 }
 
 func (h *Hnsw) Link(first, second uint32, attrID int) {
@@ -302,13 +299,16 @@ func (h *Hnsw) Link(first, second uint32, attrID int) {
 	//	node.friends = make(map[int][]uint32)
 	//}
 
-	if node.friends[attrID] == nil {
-		node.friends[attrID] = make([]uint32, 0)
+	_temp, _ := node.friends.Load(attrID)
+	_friends := _temp.([]uint32)
+	if _friends == nil {
+		node.friends.Store(attrID, make([]uint32, 0))
 	}
 
-	node.friends[attrID] = append(node.friends[attrID], second)
+	_friends = append(_friends, second)
+	node.friends.Store(attrID, _friends)
 
-	l := len(node.friends[attrID])
+	l := len(_friends)
 
 	if l > maxL {
 
@@ -316,35 +316,41 @@ func (h *Hnsw) Link(first, second uint32, attrID int) {
 
 		switch h.DelaunayType {
 		case 0:
-			resultSet := &distqueue.DistQueueClosestLast{Size: len(node.friends[attrID])}
+			resultSet := &distqueue.DistQueueClosestLast{Size: l}
 
-			for _, n := range node.friends[attrID] {
+			for _, n := range _friends {
 				resultSet.Push(n, h.DistFunc(node.p, h.nodes[n].p))
 			}
 			for resultSet.Len() > maxL {
 				resultSet.Pop()
 			}
 			// FRIENDS ARE STORED IN DISTANCE ORDER, closest at index 0
-			node.friends[attrID] = node.friends[attrID][0:maxL]
+			node.friends.Store(attrID, _friends[0:maxL])
 			for i := maxL - 1; i >= 0; i-- {
 				item := resultSet.Pop()
-				node.friends[attrID][i] = item.ID
+				_temp, _ := node.friends.Load(attrID)
+				_friends := _temp.([]uint32)
+				_friends[i] = item.ID
+				node.friends.Store(attrID, _friends)
 			}
 
 		case 1:
 
-			resultSet := &distqueue.DistQueueClosestFirst{Size: len(node.friends[attrID])}
+			resultSet := &distqueue.DistQueueClosestFirst{Size: l}
 
-			for _, n := range node.friends[attrID] {
+			for _, n := range _friends {
 				resultSet.Push(n, h.DistFunc(node.p, h.nodes[n].p))
 			}
 			h.getNeighborsByHeuristicClosestFirst(resultSet, maxL)
 
 			// FRIENDS ARE STORED IN DISTANCE ORDER, closest at index 0
-			node.friends[attrID] = node.friends[attrID][0:maxL]
+			node.friends.Store(attrID, _friends[0:maxL])
 			for i := 0; i < maxL; i++ {
 				item := resultSet.Pop()
-				node.friends[attrID][i] = item.ID
+				_temp, _ := node.friends.Load(attrID)
+				_friends := _temp.([]uint32)
+				_friends[i] = item.ID
+				node.friends.Store(attrID, _friends)
 			}
 		}
 	}
@@ -442,12 +448,11 @@ func New(M int, efConstruction int, first Point) *Hnsw {
 	h.DistFunc = f32.L2Squared8AVX
 
 	// add first point, it will be our enterpoint (index 0)
-	h.nodes = []node{node{p: first, friends: make(map[int][]uint32)}}
+	h.nodes = []node{{p: first, friends: sync.Map{}}}
 
 	h.attributeLink = AttributeLink{
 		IDCount:    0,
-		attrString: make(map[string]int),
-		//attrMap:     make(map[int][]uint32)
+		attrString: sync.Map{},
 	}
 
 	return &h
@@ -482,7 +487,12 @@ func (h *Hnsw) Stats() string {
 		//	connsC[k]++
 		//}
 		memoryUseData += h.nodes[i].p.Size()
-		memoryUseIndex += len(h.nodes[i].friends)*h.M*4
+		_len := 0
+		h.nodes[i].friends.Range(func(k,v interface{})bool{
+			_len++
+			return true
+		})
+		memoryUseIndex += _len*h.M*4
 	}
 	for i := range attrCount {
 		//avg := conns[i] / max(1, connsC[i])
@@ -516,7 +526,7 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 
 	// assume Grow has been called in advance
 	newID := id
-	newNode := node{p: q, friends: make(map[int][]uint32), attributes: attributes}
+	newNode := node{p: q, friends: sync.Map{}, attributes: attributes}
 
 	n := uint(len(attributes))
 	var maxCount uint = 1 << n
@@ -536,17 +546,19 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 		}
 
 		attrID := 0
-		if _, ok := h.attributeLink.attrString[attrString]; ok {
+		if _, ok := h.attributeLink.attrString.Load(attrString); ok {
 			//if attrString != "nil;nil;nil" {
 			//	fmt.Print("存在ID:")
 			//	fmt.Println(attrString)
 			//}
-			attrID = h.attributeLink.attrString[attrString]
+			_attrID, _ := h.attributeLink.attrString.Load(attrString)
+			attrID = _attrID.(int)
 			//h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
 
 			resultSet := &distqueue.DistQueueClosestLast{}
 
-			epID := h.nodes[h.enterpoint].friends[attrID][0]
+			_epID, _ := h.nodes[h.enterpoint].friends.Load(attrID)
+			epID := _epID.([]uint32)[0]
 			h.RLock()
 			ep := &distqueue.Item{ID: epID, D: h.DistFunc(h.nodes[epID].p, q)}
 			h.RUnlock()
@@ -562,19 +574,22 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 				h.getNeighborsByHeuristicClosestLast(resultSet, h.M)
 			}
 
-			newNode.friends[attrID] = make([]uint32, resultSet.Len())
+			newNode.friends.Store(attrID, make([]uint32, resultSet.Len()))
 			for i := resultSet.Len() - 1; i >= 0; i-- {
 				item := resultSet.Pop()
 				// store in order, closest at index 0
-				newNode.friends[attrID][i] = item.ID
+				_temp, _ := newNode.friends.Load(attrID)
+				f := _temp.([]uint32)
+				f[i] = item.ID
+				newNode.friends.Store(attrID, f)
 			}
 		} else {
 			//fmt.Print("插入新ID:")
 			//fmt.Println(attrString)
 			attrID = h.attributeLink.IDCount
-			h.attributeLink.attrString[attrString] = attrID
-			h.nodes[0].friends[attrID] = append(h.nodes[0].friends[attrID], newID)
-			//h.attributeLink.attrMap[attrID] = append(h.attributeLink.attrMap[attrID], newID)
+			h.attributeLink.attrString.Store(attrString, attrID)
+			h.nodes[0].friends.Store(attrID, []uint32{newID})
+			newNode.friends.Store(attrID, make([]uint32, 0))
 			h.attributeLink.IDCount += 1
 		}
 
@@ -586,18 +601,11 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 		h.nodes[newID] = newNode
 		h.Unlock()
 
-		// now add connections to newNode from newNodes neighbours (makes it visible in the graph)
-		//for level := min(curlevel, currentMaxLayer); level >= 0; level-- {
-		//	for _, n := range newNode.friends[level] {
-		//		h.Link(n, newID, level)
-		//	}
-		//}
-
-		for _, n := range newNode.friends[attrID] {
+		friends, _ := newNode.friends.Load(attrID)
+		for _, n := range friends.([]uint32) {
 			h.Link(n, newID, attrID)
 		}
 	}
-
 }
 
 func (h *Hnsw) searchAtLayer(q Point, resultSet *distqueue.DistQueueClosestLast, efConstruction int, ep *distqueue.Item, attrID int) {
@@ -622,7 +630,8 @@ func (h *Hnsw) searchAtLayer(q Point, resultSet *distqueue.DistQueueClosestLast,
 			break
 		}
 
-		friends := h.nodes[c.ID].friends[attrID]
+		_friends, _ := h.nodes[c.ID].friends.Load(attrID)
+		friends := _friends.([]uint32)
 
 		for _, n := range friends {
 			if !visited.Test(uint(n)) {
@@ -696,9 +705,11 @@ func (h *Hnsw) Search(q Point, ef int, K int, attributes []string) *distqueue.Di
 		}
 	}
 
-	if _, ok := h.attributeLink.attrString[attrString]; ok {
-		attrID := h.attributeLink.attrString[attrString]
-		epID := h.nodes[h.enterpoint].friends[attrID][0]
+	if _, ok := h.attributeLink.attrString.Load(attrString); ok {
+		_attrID, _ := h.attributeLink.attrString.Load(attrString)
+		attrID := _attrID.(int)
+		_epID, _ := h.nodes[h.enterpoint].friends.Load(attrID)
+		epID := _epID.([]uint32)[0]
 		h.RLock()
 		ep := &distqueue.Item{ID: epID, D: h.DistFunc(h.nodes[epID].p, q)}
 		h.RUnlock()

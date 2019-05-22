@@ -20,14 +20,13 @@ func main() {
 	const (
 		NUM      = 10000
 		TESTNUM  = 100
-		efSearch = 1000
+		efSearch = 200
 		K        = 100
 		//NUM      = 1000000
 		//TESTNUM  = 10000
 		//efSearch = 1000
 		//K        = 1000
 
-		DIMENSION      = 128
 		M              = 16
 		efConstruction = 200
 	)

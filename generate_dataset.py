@@ -16,7 +16,7 @@ def fvecs_read(fname):
 
 
 if __name__ == "__main__":
-    pre_type = "sift"
+    pre_type = "gist"
     data_type = ["base", "query", "learn"]
     prefix = pre_type + "/" + pre_type
     ma_prefix = "./" + pre_type + "_ma/" + pre_type
