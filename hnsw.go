@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	//"fmt"
 	"io"
 
@@ -278,7 +280,7 @@ func (h *Hnsw) Link(first, second uint32, attrID int) {
 	node := &h.nodes[first]
 	h.RUnlock()
 
-	node.Lock()
+	//node.Lock()
 
 	//// check if we have allocated friends slices up to this level?
 	//if len(node.friends) < h.attributeLink.IDCount+1 {
@@ -298,8 +300,9 @@ func (h *Hnsw) Link(first, second uint32, attrID int) {
 	//if node.friends == nil {
 	//	node.friends = make(map[int][]uint32)
 	//}
-
+	//h.RLock()
 	_temp, _ := node.friends.Load(attrID)
+	//h.RUnlock()
 	_friends := _temp.([]uint32)
 	if _friends == nil {
 		node.friends.Store(attrID, make([]uint32, 0))
@@ -354,7 +357,7 @@ func (h *Hnsw) Link(first, second uint32, attrID int) {
 			}
 		}
 	}
-	node.Unlock()
+	//node.Unlock()
 }
 
 func (h *Hnsw) getNeighborsByHeuristicClosestLast(resultSet1 *distqueue.DistQueueClosestLast, M int) {
@@ -448,12 +451,13 @@ func New(M int, efConstruction int, first Point) *Hnsw {
 	h.DistFunc = f32.L2Squared8AVX
 
 	// add first point, it will be our enterpoint (index 0)
+	//h.Lock()
 	h.nodes = []node{{p: first, friends: sync.Map{}}}
-
 	h.attributeLink = AttributeLink{
 		IDCount:    0,
 		attrString: sync.Map{},
 	}
+	//h.Unlock()
 
 	return &h
 }
@@ -526,8 +530,9 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 
 	// assume Grow has been called in advance
 	newID := id
+	//h.Lock()
 	newNode := node{p: q, friends: sync.Map{}, attributes: attributes}
-
+	//h.Unlock()
 	n := uint(len(attributes))
 	var maxCount uint = 1 << n
 	var i uint
@@ -558,6 +563,9 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 			resultSet := &distqueue.DistQueueClosestLast{}
 
 			_epID, _ := h.nodes[h.enterpoint].friends.Load(attrID)
+			for _epID == nil {
+				time.Sleep(100)
+			}
 			epID := _epID.([]uint32)[0]
 			h.RLock()
 			ep := &distqueue.Item{ID: epID, D: h.DistFunc(h.nodes[epID].p, q)}
@@ -629,8 +637,13 @@ func (h *Hnsw) searchAtLayer(q Point, resultSet *distqueue.DistQueueClosestLast,
 			// since candidates is sorted, it wont get any better...
 			break
 		}
-
+		//h.Lock()
 		_friends, _ := h.nodes[c.ID].friends.Load(attrID)
+		//h.Unlock()
+
+		for _friends == nil {
+			time.Sleep(100)
+		}
 		friends := _friends.([]uint32)
 
 		for _, n := range friends {
