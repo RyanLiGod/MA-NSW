@@ -27,8 +27,8 @@ type query struct {
 
 const (
 	// sift small
-	NUM2      = 10000
-	TESTNUM2  = 100
+	NUM2     = 10000
+	TESTNUM2 = 100
 	efSearch = 200
 	K        = 100
 
@@ -37,7 +37,7 @@ const (
 	//TESTNUM2  = 10000
 	//efSearch = 1000
 	//K        = 1000
-	DIMENSION2     = 128
+	DIMENSION2 = 128
 
 	// gist
 	//NUM2           = 1000000
@@ -54,7 +54,7 @@ func main() {
 	//preType := "gist"
 	preType := "siftsmall"
 
-	prefix := preType + "_ma/" + preType
+	prefix := "../dataset/" + preType + "_ma/" + preType
 
 	points := make(chan job)
 	queries := make(chan job)
@@ -69,7 +69,7 @@ func main() {
 	h.Grow(NUM2)
 
 	var wg sync.WaitGroup
-	for i := 0; i < runtime.NumCPU()-6; i++ {
+	for i := 0; i < runtime.NumCPU()-4; i++ {
 		wg.Add(1)
 		go func() {
 			for {
@@ -83,6 +83,14 @@ func main() {
 		}()
 	}
 	wg.Wait()
+
+	err := h.Save(preType + "_" + strconv.FormatInt(M, 10) + "_" + strconv.FormatInt(efConstruction, 10) + ".ind")
+	if err != nil {
+		panic("Save error!")
+	}
+
+	h, timestamp, _ := hnsw.Load(preType + "_" + strconv.FormatInt(M, 10) + "_" + strconv.FormatInt(efConstruction, 10) + ".ind")
+	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 	//for i := 1; i <= NUM2; i++ {
 	//	h.Add(points[i-1].p, uint32(i), points[i-1].attr)
@@ -98,10 +106,9 @@ func main() {
 
 	fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
 
-
 	type truthTyoe struct {
 		sync.RWMutex
-		p    [][]uint32
+		p [][]uint32
 	}
 
 	var truth truthTyoe
