@@ -22,39 +22,40 @@ func main() {
 	const (
 		M              = 16
 		efConstruction = 400
-		efSearch       = 200
+		efSearch       = 100
 		K              = 10
 	)
 
 	var zero hnsw.Point = make([]float32, DIMENSION)
 
-	h := hnsw.New(M, efConstruction, zero)
+	//h := hnsw.New(M, efConstruction, zero, "l2")
+	h := hnsw.New(M, efConstruction, zero, "cosine")
 	h.Grow(NUM)
 
 	provinces := []string{"浙江省", "江西省", "安徽省"}
 	types := []string{"高校", "企业", "其他"}
 	titles := []string{"教授", "讲师"}
 
-	//for i := 1; i <= NUM; i++ {
-	//	//fmt.Println("--------------------")
-	//	//fmt.Println(i)
-	//	randomAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
-	//	//fmt.Println(randomAttr)
-	//	h.Add(randomPoint(), uint32(i), randomAttr)
-	//	// h.Add(randomPoint(), uint32(i))
-	//	if (i)%1000 == 0 {
-	//		fmt.Printf("%v points added\n", i)
-	//	}
-	//	//fmt.Println(h.GetNodes()[0])
-	//}
-	////fmt.Println(h.GetAttributeLink())
-	////fmt.Println(h.GetNodes()[0])
-	////fmt.Println(h)
-	//
+	for i := 1; i <= NUM; i++ {
+		//fmt.Println("--------------------")
+		//fmt.Println(i)
+		randomAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
+		//fmt.Println(randomAttr)
+		h.Add(randomPoint(), uint32(i), randomAttr)
+		// h.Add(randomPoint(), uint32(i))
+		if (i)%1000 == 0 {
+			fmt.Printf("%v points added\n", i)
+		}
+		//fmt.Println(h.GetNodes()[0])
+	}
+	//fmt.Println(h.GetAttributeLink())
+	//fmt.Println(h.GetNodes()[0])
+	//fmt.Println(h)
+
 	//_ = h.Save("test.ind")
 
-	h, timestamp, _ := hnsw.Load("test.ind")
-	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
+	//h, timestamp, _ := hnsw.Load("test.ind")
+	//fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 
 	fmt.Printf("Now searching with HNSW...\n")

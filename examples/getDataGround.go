@@ -27,16 +27,16 @@ type query struct {
 
 const (
 	// sift small
-	NUM2     = 10000
-	TESTNUM2 = 100
-	efSearch = 200
-	K        = 100
+	//NUM2     = 10000
+	//TESTNUM2 = 100
+	//efSearch = 200
+	//K        = 100
 
 	// sift
-	//NUM2      = 1000000
-	//TESTNUM2  = 10000
-	//efSearch = 1000
-	//K        = 1000
+	NUM2      = 1000000
+	TESTNUM2  = 10000
+	efSearch = 10000
+	K        = 100
 	DIMENSION2 = 128
 
 	// gist
@@ -52,42 +52,43 @@ const (
 
 func main() {
 	//preType := "gist"
-	preType := "siftsmall"
+	//preType := "siftsmall"
+	preType := "sift"
 
 	prefix := "../dataset/" + preType + "_ma/" + preType
 
-	points := make(chan job)
+	//points := make(chan job)
 	queries := make(chan job)
 
 	querySlice := make([]query, TESTNUM2)
 
-	go loadBaseData(prefix, points)
+	//go loadBaseData(prefix, points)
 	go loadQueryData(prefix, queries)
 
 	p := make([]float32, DIMENSION2)
 	h := hnsw.New(M, efConstruction, p)
 	h.Grow(NUM2)
 
-	var wg sync.WaitGroup
-	for i := 0; i < runtime.NumCPU()-4; i++ {
-		wg.Add(1)
-		go func() {
-			for {
-				job, more := <-points
-				if !more {
-					wg.Done()
-					return
-				}
-				h.Add(job.p, job.id, job.attr)
-			}
-		}()
-	}
-	wg.Wait()
+	//var wg sync.WaitGroup
+	//for i := 0; i < 4; i++ {
+	//	wg.Add(1)
+	//	go func() {
+	//		for {
+	//			job, more := <-points
+	//			if !more {
+	//				wg.Done()
+	//				return
+	//			}
+	//			h.Add(job.p, job.id, job.attr)
+	//		}
+	//	}()
+	//}
+	//wg.Wait()
 
-	err := h.Save(preType + "_" + strconv.FormatInt(M, 10) + "_" + strconv.FormatInt(efConstruction, 10) + ".ind")
-	if err != nil {
-		panic("Save error!")
-	}
+	//err := h.Save(preType + "_" + strconv.FormatInt(M, 10) + "_" + strconv.FormatInt(efConstruction, 10) + ".ind")
+	//if err != nil {
+	//	panic("Save error!")
+	//}
 
 	h, timestamp, _ := hnsw.Load(preType + "_" + strconv.FormatInt(M, 10) + "_" + strconv.FormatInt(efConstruction, 10) + ".ind")
 	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))

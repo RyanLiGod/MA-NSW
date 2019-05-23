@@ -12,6 +12,7 @@ import (
 	"io"
 
 	"./bitsetpool"
+	"./cosd"
 	"./distqueue"
 	"./f32"
 	"sync"
@@ -440,7 +441,7 @@ func (h *Hnsw) GetNodes() []node {
 	return h.nodes
 }
 
-func New(M int, efConstruction int, first Point) *Hnsw {
+func New(M int, efConstruction int, first Point, distType string) *Hnsw {
 
 	h := Hnsw{}
 	h.M = M
@@ -450,7 +451,12 @@ func New(M int, efConstruction int, first Point) *Hnsw {
 
 	h.bitset = bitsetpool.New()
 
-	h.DistFunc = f32.L2Squared8AVX
+	if distType == "l2" {
+		h.DistFunc = f32.L2Squared8AVX
+	} else if distType == "cosine" {
+		h.DistFunc = cosd.Cosd
+	}
+
 
 	// add first point, it will be our enterpoint (index 0)
 	h.nodes = []node{{p: first, friends: make([][]uint32, 100)}}
