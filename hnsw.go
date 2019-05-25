@@ -43,6 +43,7 @@ type Hnsw struct {
 	efConstruction int
 	linkMode       int
 	DelaunayType   int
+	distType       int
 	DistFunc       func([]float32, []float32) float32
 	nodes          []node
 	bitset         *bitsetpool.BitsetPool
@@ -69,16 +70,21 @@ func Load(filename string) (*Hnsw, int64, error) {
 	h.linkMode = readInt32(z)
 	h.DelaunayType = readInt32(z)
 	h.enterpoint = uint32(readInt32(z))
+	h.distType = readInt32(z)
+	if h.distType == 1 {
+		h.DistFunc = f32.L2Squared8AVX
+	} else if h.distType == 2 {
+		h.DistFunc = cosd.Cosd
+	}
 
+	// Read attributes
 	h.attributeLink.IDCount = readInt32(z)
 	l := int(readInt32(z))
-
 	tempMap := readAttrString(z, l)
 	for k, v := range tempMap {
 		h.attributeLink.attrString.Store(k, v)
 	}
 
-	h.DistFunc = f32.L2Squared8AVX
 	h.bitset = bitsetpool.New()
 
 	l = readInt32(z)
@@ -146,8 +152,10 @@ func (h *Hnsw) Save(filename string) error {
 	writeInt32(h.linkMode, z)
 	writeInt32(h.DelaunayType, z)
 	writeInt32(int(h.enterpoint), z)
-	writeInt32(h.attributeLink.IDCount, z)
+	writeInt32(h.distType, z)
 
+	// Write attributes
+	writeInt32(h.attributeLink.IDCount, z)
 	tempMap := make(map[string]int)
 	h.attributeLink.attrString.Range(func(k, v interface{}) bool {
 		tempMap[k.(string)] = v.(int)
@@ -441,7 +449,7 @@ func (h *Hnsw) GetNodes() []node {
 	return h.nodes
 }
 
-func New(M int, efConstruction int, first Point, distType string) *Hnsw {
+func New(M int, efConstruction int, first Point, distString string) *Hnsw {
 
 	h := Hnsw{}
 	h.M = M
@@ -451,10 +459,12 @@ func New(M int, efConstruction int, first Point, distType string) *Hnsw {
 
 	h.bitset = bitsetpool.New()
 
-	if distType == "l2" {
+	if distString == "l2" {
 		h.DistFunc = f32.L2Squared8AVX
-	} else if distType == "cosine" {
+		h.distType = 1
+	} else if distString == "cosine" {
 		h.DistFunc = cosd.Cosd
+		h.distType = 2
 	}
 
 

@@ -1,6 +1,7 @@
 package cosd
 
 /*
+#cgo LDFLAGS: -lm
 #include <stdio.h>
 #include <math.h>
 
@@ -8,7 +9,9 @@ double cosineSimilarity(float* A, float* B, int size) {
     float up = 0;
     float downl = 0;
     float downr = 0;
-    for (int i = 0; i < size; i++) {
+
+	int i;
+    for (i = 0; i < size; i++) {
         float a = A[i];
         float b = B[i];
         up += a * b;

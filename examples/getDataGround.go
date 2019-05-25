@@ -26,80 +26,97 @@ type query struct {
 }
 
 const (
-	// sift small
-	//NUM2     = 10000
-	//TESTNUM2 = 100
-	//efSearch = 200
-	//K        = 100
-
-	// sift
-	NUM2      = 1000000
-	TESTNUM2  = 10000
-	efSearch = 10000
-	K        = 100
-	DIMENSION2 = 128
-
-	// gist
-	//NUM2           = 1000000
-	//TESTNUM2       = 1000
-	//efSearch       = 1000
-	//K              = 1000
-	//DIMENSION2     = 960
-
-	M              = 16
-	efConstruction = 400
+	M2              = 16
+	efConstruction2 = 400
+	efSearch2 = 200
 )
+
+var NUM2, TESTNUM2, K, DIMENSION2 int
 
 func main() {
 	//preType := "gist"
-	//preType := "siftsmall"
-	preType := "sift"
+	preType := "siftsmall"
+	//preType := "sift"
+
+	if preType == "siftsmall" {
+		NUM2 = 10000
+		TESTNUM2 = 100
+		K = 100
+		DIMENSION2 = 128
+	} else if preType == "sift" {
+		NUM2 = 1000000
+		TESTNUM2 = 10000
+		K = 100
+		DIMENSION2 = 128
+	} else if preType == "gist" {
+		NUM2 = 1000000
+		TESTNUM2 = 1000
+		K = 100
+		DIMENSION2 = 960
+	} else if preType == "glove25" {
+		NUM2 = 1183514
+		TESTNUM2 = 10000
+		K = 100
+		DIMENSION2 = 25
+	} else if preType == "glove50" {
+		NUM2 = 1183514
+		TESTNUM2 = 10000
+		K = 100
+		DIMENSION2 = 50
+	} else if preType == "glove100" {
+		NUM2 = 1183514
+		TESTNUM2 = 10000
+		K = 100
+		DIMENSION2 = 100
+	} else if preType == "glove200" {
+		NUM2 = 1183514
+		TESTNUM2 = 10000
+		K = 100
+		DIMENSION2 = 200
+	} else if preType == "mnist" {
+		NUM2 = 60000
+		TESTNUM2 = 10000
+		K = 100
+		DIMENSION2 = 784
+	}
 
 	prefix := "../dataset/" + preType + "_ma/" + preType
 
-	//points := make(chan job)
+	points := make(chan job)
 	queries := make(chan job)
 
 	querySlice := make([]query, TESTNUM2)
 
-	//go loadBaseData(prefix, points)
+	go loadBaseData(prefix, points)
 	go loadQueryData(prefix, queries)
 
 	p := make([]float32, DIMENSION2)
-	h := hnsw.New(M, efConstruction, p)
+	h := hnsw.New(M2, efConstruction2, p, "l2")
 	h.Grow(NUM2)
 
-	//var wg sync.WaitGroup
-	//for i := 0; i < 4; i++ {
-	//	wg.Add(1)
-	//	go func() {
-	//		for {
-	//			job, more := <-points
-	//			if !more {
-	//				wg.Done()
-	//				return
-	//			}
-	//			h.Add(job.p, job.id, job.attr)
-	//		}
-	//	}()
-	//}
-	//wg.Wait()
+	var wg sync.WaitGroup
+	for i := 0; i < 1; i++ {
+		wg.Add(1)
+		go func() {
+			for {
+				job, more := <-points
+				if !more {
+					wg.Done()
+					return
+				}
+				h.Add(job.p, job.id, job.attr)
+			}
+		}()
+	}
+	wg.Wait()
 
-	//err := h.Save(preType + "_" + strconv.FormatInt(M, 10) + "_" + strconv.FormatInt(efConstruction, 10) + ".ind")
-	//if err != nil {
-	//	panic("Save error!")
-	//}
+	err := h.Save("ind/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
+	if err != nil {
+		panic("Save error!")
+	}
 
-	h, timestamp, _ := hnsw.Load(preType + "_" + strconv.FormatInt(M, 10) + "_" + strconv.FormatInt(efConstruction, 10) + ".ind")
+	h, timestamp, _ := hnsw.Load("ind/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
 	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
-
-	//for i := 1; i <= NUM2; i++ {
-	//	h.Add(points[i-1].p, uint32(i), points[i-1].attr)
-	//	if (i)%1000 == 0 {
-	//		fmt.Printf("%v points added\n", i)
-	//	}
-	//}
-	//fmt.Println(h.GetNodes()[0])
 
 	fmt.Printf("Now searching with HNSW...\n")
 	timeRecord := make([]float64, TESTNUM2)
@@ -142,22 +159,9 @@ func main() {
 	}
 	wg2.Wait()
 
-	//fmt.Println(truth)
-
-	//for i := range queries {
-	//	if (i)%10 == 0 {
-	//		fmt.Printf("Calculating using bruteforce search: %v\n", i)
-	//	}
-	//	result := h.SearchBrute(queries[i].p, K, queries[i].attr)
-	//	truth[i] = make([]uint32, K)
-	//	for j := K - 1; j >= 0; j-- {
-	//		item := result.Pop()
-	//		truth[i][j] = item.ID
-	//	}
-	//}
-
 	// Save ground truth to file
 	var fileTruth = prefix + "_groundtruth.txt"
+	//var fileTruth = "test" + "_groundtruth.txt"
 	f, _ := os.Create(fileTruth)
 	for _, line := range truth.p {
 		for i, v := range line {
@@ -171,7 +175,7 @@ func main() {
 
 	for i := 0; i < TESTNUM2; i++ {
 		startSearch := time.Now()
-		result := h.Search(querySlice[i].p, efSearch, K, querySlice[i].attr)
+		result := h.Search(querySlice[i].p, efSearch2, K, querySlice[i].attr)
 		//fmt.Print("Searching with attributes:")
 		//fmt.Println(attrQuery[i])
 		stopSearch := time.Since(startSearch)
