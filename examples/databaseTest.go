@@ -17,9 +17,6 @@ type query2 struct {
 }
 
 const (
-	//preType = "gist"
-	//preType = "sift"
-	preType         = "siftsmall"
 	M3              = 16
 	efConstruction3 = 400
 )
@@ -27,18 +24,25 @@ const (
 var efSearch3 = []int{10, 20, 30, 50, 80, 100, 101, 110, 150, 200, 300, 500, 1000}
 
 var NUM3, TESTNUM3, K3, DIMENSION3 int
+var DIST3 string
 
 func main() {
+	//preType := "gist"
+	//preType := "sift"
+	preType := "sift1_4"
+	//preType := "siftsmall"
 	if preType == "siftsmall" {
 		NUM3 = 10000
 		TESTNUM3 = 100
 		K3 = 100
 		DIMENSION3 = 128
-	} else if preType == "sift" {
+		DIST3 = "l2"
+	} else if preType == "sift" || preType == "sift1_4" || preType == "sift1_8" || preType == "sift1_16" {
 		NUM3 = 1000000
 		TESTNUM3 = 10000
 		K3 = 100
 		DIMENSION3 = 128
+		DIST3 = "l2"
 	} else if preType == "gist" {
 		NUM3 = 1000000
 		TESTNUM3 = 1000
@@ -49,26 +53,31 @@ func main() {
 		TESTNUM3 = 10000
 		K3 = 100
 		DIMENSION3 = 25
+		DIST3 = "cosine"
 	} else if preType == "glove50" {
 		NUM3 = 1183514
 		TESTNUM3 = 10000
 		K3 = 100
 		DIMENSION3 = 50
+		DIST3 = "cosine"
 	} else if preType == "glove100" {
 		NUM3 = 1183514
 		TESTNUM3 = 10000
 		K3 = 100
 		DIMENSION3 = 100
+		DIST3 = "cosine"
 	} else if preType == "glove200" {
 		NUM3 = 1183514
 		TESTNUM3 = 10000
 		K3 = 100
 		DIMENSION3 = 200
+		DIST3 = "cosine"
 	} else if preType == "mnist" {
 		NUM3 = 60000
 		TESTNUM3 = 10000
 		K3 = 100
 		DIMENSION3 = 784
+		DIST3 = "l2"
 	}
 
 	prefix := "../dataset/" + preType + "_ma/" + preType
@@ -80,11 +89,11 @@ func main() {
 	truth = loadGroundTruth(prefix)
 
 	p := make([]float32, DIMENSION3)
-	h := hnsw.New(M3, efConstruction3, p, "l2")
+	h := hnsw.New(M3, efConstruction3, p, DIST3)
 	h.Grow(NUM3)
 
 	fmt.Println("Index loading...")
-	h, timestamp, _ := hnsw.Load("ind/" + preType + "_" + strconv.FormatInt(M3, 10) + "_" + strconv.FormatInt(efConstruction3, 10) + ".ind")
+	h, timestamp, _ := hnsw.Load("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(M3, 10) + "_" + strconv.FormatInt(efConstruction3, 10) + ".ind")
 	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 	fmt.Printf("Now searching with HNSW...\n")

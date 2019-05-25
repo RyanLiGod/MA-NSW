@@ -16,23 +16,26 @@ def fvecs_read(fname):
 
 
 if __name__ == "__main__":
-    pre_type = "gist"
-    data_type = ["base", "query", "learn"]
-    prefix = pre_type + "/" + pre_type
-    ma_prefix = "./" + pre_type + "_ma/" + pre_type
+    pre_type = "sift"
+    percent = "1_16"
+    data_type = ["base", "query"]
+    prefix = "../dataset/" + pre_type + "/" + pre_type
+    ma_prefix = "../dataset/" + pre_type + percent + "_ma/" + pre_type + percent
     attr_1 = ["blue", "red", "green", "yellow"]
     attr_2 = ["sky", "land", "sea"]
-    attr_3 = ["boy", "girl"]
+    attr_3 = ["boy", "girl", "girl", "girl", "girl", "girl", "girl", "girl", "girl", "girl", "girl", "girl", "girl",
+              "girl", "girl", "girl"]
     data = []
     for t in data_type:
         data.append(fvecs_read(prefix + "_" + t + ".fvecs"))
 
     # Write base, query, learn
     for i, t in enumerate(data_type):
+        print("begin " + t)
         with open(ma_prefix + "_" + t + ".txt", 'w') as f:
             for line in data[i]:
                 for v in line:
                     f.write(str(v) + " ")
                 f.write(attr_1[random.randint(0, 3)] + " ")
                 f.write(attr_2[random.randint(0, 2)] + " ")
-                f.write(attr_3[random.randint(0, 1)] + "\n")
+                f.write(attr_3[random.randint(0, 15)] + "\n")

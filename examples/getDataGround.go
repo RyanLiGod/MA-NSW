@@ -1,17 +1,17 @@
 package main
 
 import (
-	hnsw ".."
 	"bufio"
 	"fmt"
-	"github.com/grd/stat"
-	"io"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	hnsw ".."
+	"github.com/grd/stat"
 )
 
 type job struct {
@@ -28,56 +28,68 @@ type query struct {
 const (
 	M2              = 16
 	efConstruction2 = 400
-	efSearch2 = 200
+	efSearch2       = 200
 )
 
 var NUM2, TESTNUM2, K, DIMENSION2 int
+var DIST2 string
 
 func main() {
-	//preType := "gist"
-	preType := "siftsmall"
+	// preType := "gist"
+	// preType := "glove200"
+	//preType := "mnist"
+	//preType := "siftsmall"
 	//preType := "sift"
+	preType := "sift1_4"
 
 	if preType == "siftsmall" {
 		NUM2 = 10000
 		TESTNUM2 = 100
 		K = 100
 		DIMENSION2 = 128
-	} else if preType == "sift" {
+		DIST2 = "l2"
+	} else if preType == "sift" || preType == "sift1_4" || preType == "sift1_8" || preType == "sift1_16" {
 		NUM2 = 1000000
 		TESTNUM2 = 10000
 		K = 100
 		DIMENSION2 = 128
+		DIST2 = "l2"
 	} else if preType == "gist" {
 		NUM2 = 1000000
 		TESTNUM2 = 1000
 		K = 100
 		DIMENSION2 = 960
+		DIST2 = "l2"
 	} else if preType == "glove25" {
 		NUM2 = 1183514
 		TESTNUM2 = 10000
 		K = 100
 		DIMENSION2 = 25
+		DIST2 = "cosine"
 	} else if preType == "glove50" {
 		NUM2 = 1183514
 		TESTNUM2 = 10000
 		K = 100
 		DIMENSION2 = 50
+		DIST2 = "cosine"
 	} else if preType == "glove100" {
 		NUM2 = 1183514
 		TESTNUM2 = 10000
 		K = 100
 		DIMENSION2 = 100
+		DIST2 = "cosine"
 	} else if preType == "glove200" {
 		NUM2 = 1183514
 		TESTNUM2 = 10000
 		K = 100
 		DIMENSION2 = 200
+		DIST2 = "cosine"
 	} else if preType == "mnist" {
 		NUM2 = 60000
 		TESTNUM2 = 10000
 		K = 100
 		DIMENSION2 = 784
+		DIST2 = "l2"
 	}
 
 	prefix := "../dataset/" + preType + "_ma/" + preType
@@ -91,7 +103,7 @@ func main() {
 	go loadQueryData(prefix, queries)
 
 	p := make([]float32, DIMENSION2)
-	h := hnsw.New(M2, efConstruction2, p, "l2")
+	h := hnsw.New(M2, efConstruction2, p, DIST2)
 	h.Grow(NUM2)
 
 	var wg sync.WaitGroup
@@ -110,12 +122,12 @@ func main() {
 	}
 	wg.Wait()
 
-	err := h.Save("ind/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
+	err := h.Save("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
 	if err != nil {
 		panic("Save error!")
 	}
 
-	h, timestamp, _ := hnsw.Load("ind/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
+	h, timestamp, _ := hnsw.Load("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
 	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 	fmt.Printf("Now searching with HNSW...\n")
@@ -160,18 +172,18 @@ func main() {
 	wg2.Wait()
 
 	// Save ground truth to file
-	var fileTruth = prefix + "_groundtruth.txt"
-	//var fileTruth = "test" + "_groundtruth.txt"
-	f, _ := os.Create(fileTruth)
-	for _, line := range truth.p {
-		for i, v := range line {
-			_, _ = io.WriteString(f, strconv.FormatUint(uint64(v), 10))
-			if i < len(line)-1 {
-				_, _ = io.WriteString(f, " ")
-			}
-		}
-		_, _ = io.WriteString(f, "\n")
-	}
+	//var fileTruth = prefix + "_groundtruth.txt"
+	////var fileTruth = "test" + "_groundtruth.txt"
+	//f, _ := os.Create(fileTruth)
+	//for _, line := range truth.p {
+	//	for i, v := range line {
+	//		_, _ = io.WriteString(f, strconv.FormatUint(uint64(v), 10))
+	//		if i < len(line)-1 {
+	//			_, _ = io.WriteString(f, " ")
+	//		}
+	//	}
+	//	_, _ = io.WriteString(f, "\n")
+	//}
 
 	for i := 0; i < TESTNUM2; i++ {
 		startSearch := time.Now()
