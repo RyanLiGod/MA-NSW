@@ -123,14 +123,6 @@ func main() {
 	}
 	wg.Wait()
 
-	err := h.Save("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
-	if err != nil {
-		panic("Save error!")
-	}
-
-	h, timestamp, _ := hnsw.Load("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
-	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
-
 	fmt.Printf("Now searching with HNSW...\n")
 	timeRecord := make([]float64, TESTNUM2)
 	hits := 0
@@ -172,7 +164,7 @@ func main() {
 	}
 	wg2.Wait()
 
-	// Save ground truth to file
+	//// Save ground truth to file
 	//var fileTruth = prefix + "_groundtruth.txt"
 	////var fileTruth = "test" + "_groundtruth.txt"
 	//f, _ := os.Create(fileTruth)
@@ -185,6 +177,14 @@ func main() {
 	//	}
 	//	_, _ = io.WriteString(f, "\n")
 	//}
+
+	err := h.Save("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
+	if err != nil {
+		panic("Save error!")
+	}
+
+	h, timestamp, _ := hnsw.Load("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
+	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 	for i := 0; i < TESTNUM2; i++ {
 		startSearch := time.Now()
