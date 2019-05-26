@@ -470,7 +470,6 @@ func New(M int, efConstruction int, first Point, distString string) *Hnsw {
 
 	// add first point, it will be our enterpoint (index 0)
 	h.nodes = []node{{p: first, friends: make([][]uint32, 100)}}
-
 	h.attributeLink = AttributeLink{
 		IDCount:    0,
 		attrString: sync.Map{},

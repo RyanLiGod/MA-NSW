@@ -29,7 +29,8 @@ var DIST3 string
 func main() {
 	//preType := "gist"
 	//preType := "sift"
-	preType := "sift1_4"
+	//preType := "sift1_4"
+	preType := "glove25"
 	//preType := "siftsmall"
 	if preType == "siftsmall" {
 		NUM3 = 10000
@@ -114,18 +115,18 @@ func main() {
 					//fmt.Printf("%v  ", item)
 					if item != nil {
 						//fmt.Println(h.GetNodeAttr(item.ID))
-						var flag = 0
+						//var flag = 0
 						for k := 0; k < K3; k++ {
 							if item.ID == truth[i][k] {
 								hits++
-								flag = 1
+								//flag = 1
 								break
 							}
 						}
-						if flag == 0 {
-							fmt.Printf("Can't match: %v, i: %v, attr: %v", item.ID, i, queries[i].attr)
-							fmt.Println()
-						}
+						//if flag == 0 {
+						//	fmt.Printf("Can't match: %v, i: %v, attr: %v", item.ID, i, queries[i].attr)
+						//	fmt.Println()
+						//}
 					}
 				}
 			} else {
@@ -145,7 +146,6 @@ func main() {
 		fmt.Printf("%v queries / second (single thread)\n", 1000.0/mean)
 		fmt.Printf("Average %v-NN precision: %v\n", K3, float64(hits)/(float64(TESTNUM3)*float64(K3)))
 		fmt.Printf("\n")
-
 	}
 
 	fmt.Println("----------------------------------")

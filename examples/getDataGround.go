@@ -28,7 +28,7 @@ type query struct {
 const (
 	M2              = 16
 	efConstruction2 = 400
-	efSearch2       = 200
+	efSearch2       = 1000
 )
 
 var NUM2, TESTNUM2, K, DIMENSION2 int
@@ -40,7 +40,8 @@ func main() {
 	//preType := "mnist"
 	//preType := "siftsmall"
 	//preType := "sift"
-	preType := "sift1_4"
+	//preType := "sift1_4"
+	preType := "glove25"
 
 	if preType == "siftsmall" {
 		NUM2 = 10000
@@ -198,18 +199,18 @@ func main() {
 				//fmt.Printf("%v  ", item)
 				if item != nil {
 					//fmt.Println(h.GetNodeAttr(item.ID))
-					var flag = 0
+					//var flag = 0
 					for k := 0; k < K; k++ {
 						if item.ID == truth.p[i][k] {
 							hits++
-							flag = 1
+							//flag = 1
 							break
 						}
 					}
-					if flag == 0 {
-						fmt.Printf("Can't match: %v, i: %v, attr: %v", item.ID, i, querySlice[i].attr)
-						fmt.Println()
-					}
+					//if flag == 0 {
+					//	fmt.Printf("Can't match: %v, i: %v, attr: %v", item.ID, i, querySlice[i].attr)
+					//	fmt.Println()
+					//}
 				}
 			}
 		} else {
