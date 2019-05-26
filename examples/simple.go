@@ -56,21 +56,21 @@ func main() {
 	fmt.Printf("Now searching with HNSW...\n")
 	timeRecord := make([]float64, TESTNUM)
 	hits := 0
+	queries := make([]hnsw.Point, TESTNUM)
+	truth := make([][]uint32, TESTNUM)
 	// start := time.Now()
 	for i := 0; i < TESTNUM; i++ {
 		searchAttr := []string{provinces[rand.Intn(4)], types[rand.Intn(3)], titles[rand.Intn(2)]}
 		fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
-		queries := make([]hnsw.Point, TESTNUM)
-		truth := make([][]uint32, TESTNUM)
-		for i := range queries {
-			queries[i] = randomPoint()
-			result := h.SearchBrute(queries[i], K, searchAttr)
-			truth[i] = make([]uint32, K)
-			for j := K - 1; j >= 0; j-- {
-				item := result.Pop()
-				truth[i][j] = item.ID
-			}
+
+		queries[i] = randomPoint()
+		resultTruth := h.SearchBrute(queries[i], K, searchAttr)
+		truth[i] = make([]uint32, K)
+		for j := K - 1; j >= 0; j-- {
+			item := resultTruth.Pop()
+			truth[i][j] = item.ID
 		}
+
 		startSearch := time.Now()
 		result := h.Search(queries[i], efSearch, K, searchAttr)
 		//result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})

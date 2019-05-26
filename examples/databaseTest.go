@@ -93,7 +93,7 @@ func main() {
 	h := hnsw.New(M3, efConstruction3, p, DIST3)
 	h.Grow(NUM3)
 
-	fmt.Println("Index loading...")
+	fmt.Println("Index loading: " + preType + "_" + strconv.FormatInt(M3, 10) + "_" + strconv.FormatInt(efConstruction3, 10) + ".ind")
 	h, timestamp, _ := hnsw.Load("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(M3, 10) + "_" + strconv.FormatInt(efConstruction3, 10) + ".ind")
 	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 

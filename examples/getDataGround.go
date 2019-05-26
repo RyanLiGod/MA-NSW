@@ -183,7 +183,7 @@ func main() {
 	if err != nil {
 		panic("Save error!")
 	}
-	fmt.Println("Done! Loading index...")
+	fmt.Println("Done! Loading index: " + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
 	h, timestamp, _ := hnsw.Load("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(M2, 10) + "_" + strconv.FormatInt(efConstruction2, 10) + ".ind")
 	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
