@@ -140,7 +140,7 @@ func main() {
 		mean := stat.Mean(data)
 		variance := stat.Variance(data)
 
-		fmt.Printf("--------------efc: %v---------------\n", efs)
+		fmt.Printf("--------------efs: %v---------------\n", efs)
 		fmt.Printf("Mean of queries time(MS): %v\n", mean)
 		fmt.Printf("Variance of queries time: %v\n", variance)
 		fmt.Printf("%v queries / second (single thread)\n", 1000.0/mean)

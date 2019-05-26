@@ -8,62 +8,57 @@ import (
 	"time"
 )
 
-// NUM 元素数量
+// NUM: Size of training data
 var NUM = 3000
 
-// DIMENSION 元素维度
-var DIMENSION = 25
+// DIMENSION: Dimension of data
+var DIMENSION = 32
 
-// TESTNUM 测试数量
+// TESTNUM: Size of query data
 var TESTNUM = 10
 
 func main() {
 
 	const (
-		M              = 8
-		efConstruction = 100
-		efSearch       = 1000
+		M              = 16
+		efConstruction = 400
+		efSearch       = 400
 		K              = 100
+		distType       = "l2" // l2 or cosine
 	)
 
 	var zero hnsw.Point = make([]float32, DIMENSION)
 
-	//h := hnsw.New(M, efConstruction, zero, "l2")
-	h := hnsw.New(M, efConstruction, zero, "cosine")
+	h := hnsw.New(M, efConstruction, zero, distType)
 	h.Grow(NUM)
 
-	provinces := []string{"浙江省", "江西省", "安徽省"}
-	types := []string{"高校", "企业", "其他"}
-	titles := []string{"教授", "讲师"}
+	provinces := []string{"blue", "red", "green", "yellow"}
+	types := []string{"sky", "land", "sea"}
+	titles := []string{"boy", "girl"}
 
 	for i := 1; i <= NUM; i++ {
-		//fmt.Println("--------------------")
-		//fmt.Println(i)
-		randomAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
-		//fmt.Println(randomAttr)
+		randomAttr := []string{provinces[rand.Intn(4)], types[rand.Intn(3)], titles[rand.Intn(2)]}
 		h.Add(randomPoint(), uint32(i), randomAttr)
-		// h.Add(randomPoint(), uint32(i))
 		if (i)%1000 == 0 {
 			fmt.Printf("%v points added\n", i)
 		}
-		//fmt.Println(h.GetNodes()[0])
 	}
-	//fmt.Println(h.GetAttributeLink())
-	//fmt.Println(h.GetNodes()[0])
-	//fmt.Println(h)
 
-	_ = h.Save("test.ind")
-
+	fmt.Println("Saving index...")
+	err := h.Save("test.ind")
+	if err != nil {
+		panic("Save error!")
+	}
+	fmt.Println("Done! Loading index...")
 	h, timestamp, _ := hnsw.Load("test.ind")
 	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
-
 
 	fmt.Printf("Now searching with HNSW...\n")
 	timeRecord := make([]float64, TESTNUM)
 	hits := 0
 	// start := time.Now()
 	for i := 0; i < TESTNUM; i++ {
-		searchAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
+		searchAttr := []string{provinces[rand.Intn(4)], types[rand.Intn(3)], titles[rand.Intn(2)]}
 		fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
 		queries := make([]hnsw.Point, TESTNUM)
 		truth := make([][]uint32, TESTNUM)
@@ -103,8 +98,6 @@ func main() {
 		fmt.Println()
 	}
 
-	//fmt.Println(h.GetNodes()[221])
-
 	// stop := time.Since(start)
 
 	data := stat.Float64Slice(timeRecord)
@@ -120,19 +113,9 @@ func main() {
 }
 
 func randomPoint() hnsw.Point {
-	a := rand.Intn(2)
-	b := rand.Intn(4)
 	var v hnsw.Point = make([]float32, DIMENSION)
 	for i := range v {
-		neg := 1.0
-		if a == 0 {
-			neg = -1.0
-		}
-		if b == 0 {
-			b = 1
-		}
-		v[i] = rand.Float32() * float32(neg) * float32(b)
+		v[i] = rand.Float32()
 	}
-	//fmt.Println(v)
 	return v
 }

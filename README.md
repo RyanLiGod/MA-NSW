@@ -1,6 +1,6 @@
 # MA-NSW
 
-MA-NSW is a GO implementation of the **multiple attribute** NSW approximate nearest-neighbour search algorithm implemented in C++ in https://github.com/searchivarius/nmslib and described in https://arxiv.org/abs/1603.09320
+MA-NSW is a GO implementation of the **multiple attribute** HNSW approximate nearest-neighbour search algorithm based on HNSW (Implemented in C++ in https://github.com/searchivarius/nmslib and described in https://arxiv.org/abs/1603.09320)
 
 ## Usage
 
@@ -19,13 +19,13 @@ import (
 	"time"
 )
 
-// NUM 元素数量
-var NUM = 10000
+// NUM: Size of training data
+var NUM = 3000
 
-// DIMENSION 元素维度
-var DIMENSION = 128
+// DIMENSION: Dimension of data
+var DIMENSION = 32
 
-// TESTNUM 测试数量
+// TESTNUM: Size of query data
 var TESTNUM = 10
 
 func main() {
@@ -33,85 +33,83 @@ func main() {
 	const (
 		M              = 16
 		efConstruction = 400
-		efSearch       = 1000
-		K              = 10
+		efSearch       = 400
+		K              = 100
+		distType       = "l2" // l2 or cosine
 	)
 
 	var zero hnsw.Point = make([]float32, DIMENSION)
 
-	h := hnsw.New(M, efConstruction, zero)
+	h := hnsw.New(M, efConstruction, zero, distType)
 	h.Grow(NUM)
 
-	provinces := []string{"浙江省", "江西省", "安徽省"}
-	types := []string{"高校", "企业", "其他"}
-	titles := []string{"教授", "讲师"}
-
+	provinces := []string{"blue", "red", "green", "yellow"}
+	types := []string{"sky", "land", "sea"}
+	titles := []string{"boy", "girl"}
 
 	for i := 1; i <= NUM; i++ {
-		//fmt.Println("--------------------")
-		//fmt.Println(i)
-		randomAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
-		//fmt.Println(randomAttr)
+		randomAttr := []string{provinces[rand.Intn(4)], types[rand.Intn(3)], titles[rand.Intn(2)]}
 		h.Add(randomPoint(), uint32(i), randomAttr)
-		// h.Add(randomPoint(), uint32(i))
 		if (i)%1000 == 0 {
 			fmt.Printf("%v points added\n", i)
 		}
-		//fmt.Println(h.GetNodes()[0])
 	}
-	fmt.Println(h.GetAttributeLink())
-	fmt.Println(h.GetNodes()[0])
 
-	// h.Save("BalancedAdd_100000p_128d_64M_1000efc.ind")
-
-	// h, timestamp := hnsw.Load("BalancedAdd_50000p_128d_100M_2000efc.ind")
-	// h, timestamp := hnsw.Load("Add_50000p_128d_100M_2000efc.ind")
-	// fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
-
-
-
-	fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
-	queries := make([]hnsw.Point, TESTNUM)
-	truth := make([][]uint32, TESTNUM)
-	for i := range queries {
-		queries[i] = randomPoint()
-		result := h.SearchBrute(queries[i], K)
-		truth[i] = make([]uint32, K)
-		for j := K - 1; j >= 0; j-- {
-			item := result.Pop()
-			truth[i][j] = item.ID
-		}
+	fmt.Println("Saving index...")
+	err := h.Save("test.ind")
+	if err != nil {
+		panic("Save error!")
 	}
+	fmt.Println("Done! Loading index...")
+	h, timestamp, _ := hnsw.Load("test.ind")
+	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 	fmt.Printf("Now searching with HNSW...\n")
 	timeRecord := make([]float64, TESTNUM)
 	hits := 0
-	start := time.Now()
+	// start := time.Now()
 	for i := 0; i < TESTNUM; i++ {
-		startSearch := time.Now()
-		searchAttr := []string{provinces[rand.Intn(3)], types[rand.Intn(3)], titles[rand.Intn(2)]}
-		//result := h.Search(queries[i], efSearch, K, searchAttr)
-		result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
-		fmt.Print("Searching with attributes:")
-		fmt.Println(searchAttr)
-		stopSearch := time.Since(startSearch)
-		timeRecord[i] = stopSearch.Seconds() * 1000
-		for j := 0; j < K; j++ {
-			item := result.Pop()
-			fmt.Printf("%v  ", item)
-			fmt.Println(h.GetNodeAttr(item.ID))
-			for k := 0; k < K; k++ {
-				if item.ID == truth[i][k] {
-					hits++
-				}
+		searchAttr := []string{provinces[rand.Intn(4)], types[rand.Intn(3)], titles[rand.Intn(2)]}
+		fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
+		queries := make([]hnsw.Point, TESTNUM)
+		truth := make([][]uint32, TESTNUM)
+		for i := range queries {
+			queries[i] = randomPoint()
+			result := h.SearchBrute(queries[i], K, searchAttr)
+			truth[i] = make([]uint32, K)
+			for j := K - 1; j >= 0; j-- {
+				item := result.Pop()
+				truth[i][j] = item.ID
 			}
 		}
+		startSearch := time.Now()
+		result := h.Search(queries[i], efSearch, K, searchAttr)
+		//result := h.Search(queries[i], efSearch, K, []string{"nil", "nil", "nil"})
+		stopSearch := time.Since(startSearch)
+		timeRecord[i] = stopSearch.Seconds() * 1000
+		fmt.Print("Searching with attributes:")
+		fmt.Println(searchAttr)
+		if result.Size != 0 {
+			for j := 0; j < K; j++ {
+				item := result.Pop()
+				fmt.Printf("%v  ", item)
+				if item != nil {
+					fmt.Println(h.GetNodeAttr(item.ID))
+					for k := 0; k < K; k++ {
+						if item.ID == truth[i][k] {
+							hits++
+						}
+					}
+				}
+			}
+		} else {
+			fmt.Println("Can't return any node")
+		}
+
 		fmt.Println()
 	}
 
-	//fmt.Println(h.GetNodes()[221])
-
-	stop := time.Since(start)
+	// stop := time.Since(start)
 
 	data := stat.Float64Slice(timeRecord)
 	mean := stat.Mean(data)
@@ -119,10 +117,10 @@ func main() {
 
 	fmt.Printf("Mean of queries time(MS): %v\n", mean)
 	fmt.Printf("Variance of queries time: %v\n", variance)
-	fmt.Printf("%v queries / second (single thread)\n", 1000.0/stop.Seconds())
+	fmt.Printf("%v queries / second (single thread)\n", 1000.0/mean)
 	fmt.Printf("Average 10-NN precision: %v\n", float64(hits)/(float64(TESTNUM)*float64(K)))
 	fmt.Printf("\n")
-	//fmt.Printf(h.Stats())
+	fmt.Printf(h.Stats())
 }
 
 func randomPoint() hnsw.Point {
@@ -132,6 +130,5 @@ func randomPoint() hnsw.Point {
 	}
 	return v
 }
-
 
 ```

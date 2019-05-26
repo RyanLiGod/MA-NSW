@@ -5,7 +5,7 @@ import h5py
 
 if __name__ == "__main__":
     pre_type = "glove"
-    dimension = "50"
+    dimension = "200"
     data_type = ["base", "query"]
     hdf5_type = ["train", "test"]
     prefix = "../dataset/" + pre_type + "-" + dimension + "-angular.hdf5"
