@@ -24,7 +24,7 @@ const (
 	//efConstruction3 = 800
 )
 
-var efSearch3 = []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 150, 200, 300, 500, 1000}
+var efSearch3 = []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 150, 200, 300}
 
 var NUM3, TESTNUM3, K3, DIMENSION3 int
 var DIST3 string
@@ -32,13 +32,13 @@ var DIST3 string
 func main() {
 	//preType := "gist"
 	//preType := "sift"
-	preType := "sift1_4"
+	preType := "sift1_16"
 	//preType := "glove25"
 	//preType := "siftsmall"
 	if preType == "siftsmall" {
 		NUM3 = 10000
 		TESTNUM3 = 100
-		K3 = 100
+		K3 = 10
 		DIMENSION3 = 128
 		DIST3 = "l2"
 	} else if preType == "sift" || preType == "sift1_4" || preType == "sift1_8" || preType == "sift1_16" {
@@ -50,36 +50,36 @@ func main() {
 	} else if preType == "gist" {
 		NUM3 = 1000000
 		TESTNUM3 = 1000
-		K3 = 100
+		K3 = 10
 		DIMENSION3 = 960
 	} else if preType == "glove25" {
 		NUM3 = 1183514
 		TESTNUM3 = 10000
-		K3 = 100
+		K3 = 10
 		DIMENSION3 = 25
 		DIST3 = "cosine"
 	} else if preType == "glove50" {
 		NUM3 = 1183514
 		TESTNUM3 = 10000
-		K3 = 100
+		K3 = 10
 		DIMENSION3 = 50
 		DIST3 = "cosine"
 	} else if preType == "glove100" {
 		NUM3 = 1183514
 		TESTNUM3 = 10000
-		K3 = 100
+		K3 = 10
 		DIMENSION3 = 100
 		DIST3 = "cosine"
 	} else if preType == "glove200" {
 		NUM3 = 1183514
 		TESTNUM3 = 10000
-		K3 = 100
+		K3 = 10
 		DIMENSION3 = 200
 		DIST3 = "cosine"
 	} else if preType == "mnist" {
 		NUM3 = 60000
 		TESTNUM3 = 10000
-		K3 = 100
+		K3 = 10
 		DIMENSION3 = 784
 		DIST3 = "l2"
 	}
@@ -158,11 +158,13 @@ func main() {
 		fmt.Printf("Average %v-NN precision: %v\n", K3, float64(hits)/(float64(TESTNUM3)*float64(K3)))
 		fmt.Printf("\n")
 
-		_ = xlsx.SetCellValue(sheetName, "A" + string(iter + 2), efs)
-		_ = xlsx.SetCellValue(sheetName, "B" + string(iter + 2), decimal(mean))
-		_ = xlsx.SetCellValue(sheetName, "C" + string(iter + 2), decimal(variance))
-		_ = xlsx.SetCellValue(sheetName, "D" + string(iter + 2), decimal(float64(hits)/(float64(TESTNUM3)*float64(K3))))
-
+		err := xlsx.SetCellValue(sheetName, "A" + fmt.Sprintf("%d", iter + 2), efs)
+		err = xlsx.SetCellValue(sheetName, "B" + fmt.Sprintf("%d", iter + 2), decimal(mean))
+		err = xlsx.SetCellValue(sheetName, "C" + fmt.Sprintf("%d", iter + 2), decimal(variance))
+		err = xlsx.SetCellValue(sheetName, "D" + fmt.Sprintf("%d", iter + 2), decimal(float64(hits)/(float64(TESTNUM3)*float64(K3))))
+		if err != nil {
+			panic(err)
+		}
 	}
 	err := xlsx.Save()
 	if err != nil {
