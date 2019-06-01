@@ -17,15 +17,13 @@ type query2 struct {
 	attr []string
 }
 
-var efSearch3 = []int{10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 150, 200, 300}
+var efSearch3 = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 150, 200, 300}
 
 var NUM3, TESTNUM3, K3, DIMENSION3 int
 var DIST3 string
 
 func main() {
-	// preTypeList := []string{"siftsmall", "sift1_4", "sift1_8", "sift1_16", "glove25", "glove50", "glove100", "glove200"}
-	//preTypeList := []string{"sift"}
-	preTypeList := []string{"mnist"}
+	preTypeList := []string{"sift1_4", "sift1_8", "sift1_16", "mnist", "glove25", "glove50", "glove100", "glove200"}
 	MList := []int{16, 32}
 	efCList := []int{400, 800}
 
