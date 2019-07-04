@@ -542,7 +542,7 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 
 	// assume Grow has been called in advance
 	newID := id
-	newNode := node{p: q, friends: make([][]uint32, 100), attributes: attributes}
+	newNode := node{p: q, friends: make([][]uint32, 1000), attributes: attributes}
 
 	n := uint(len(attributes))
 	var maxCount uint = 1 << n

@@ -37,10 +37,10 @@ var DIST2 string
 func main() {
 	// preType := "gist"
 	// preType := "glove200"
-	//preType := "mnist"
-	//preType := "siftsmall"
-	//preType := "sift"
-	//preType := "sift1_4"
+	// preType := "mnist"
+	// preType := "siftsmall"
+	// preType := "sift"
+	// preType := "sift1_4"
 	preType := "glove25"
 
 	if preType == "siftsmall" {

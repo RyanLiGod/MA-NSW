@@ -12,7 +12,7 @@ import (
 var NUM = 3000
 
 // DIMENSION: Dimension of data
-var DIMENSION = 32
+var DIMENSION = 16
 
 // TESTNUM: Size of query data
 var TESTNUM = 10
@@ -21,9 +21,9 @@ func main() {
 
 	const (
 		M              = 16
-		efConstruction = 400
-		efSearch       = 400
-		K              = 100
+		efConstruction = 16
+		efSearch       = 60
+		K              = 10
 		distType       = "l2" // l2 or cosine
 	)
 
@@ -35,23 +35,25 @@ func main() {
 	provinces := []string{"blue", "red", "green", "yellow"}
 	types := []string{"sky", "land", "sea"}
 	titles := []string{"boy", "girl"}
+	a := []string{"a", "b"}
+	b := []string{"a", "b"}
 
 	for i := 1; i <= NUM; i++ {
-		randomAttr := []string{provinces[rand.Intn(4)], types[rand.Intn(3)], titles[rand.Intn(2)]}
+		randomAttr := []string{provinces[rand.Intn(4)], types[rand.Intn(3)], titles[rand.Intn(2)], a[rand.Intn(2)], b[rand.Intn(2)]}
 		h.Add(randomPoint(), uint32(i), randomAttr)
 		if (i)%1000 == 0 {
 			fmt.Printf("%v points added\n", i)
 		}
 	}
 
-	fmt.Println("Saving index...")
-	err := h.Save("test.ind")
-	if err != nil {
-		panic("Save error!")
-	}
-	fmt.Println("Done! Loading index...")
-	h, timestamp, _ := hnsw.Load("test.ind")
-	fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
+	//fmt.Println("Saving index...")
+	//err := h.Save("test.ind")
+	//if err != nil {
+	//	panic("Save error!")
+	//}
+	//fmt.Println("Done! Loading index...")
+	//h, timestamp, _ := hnsw.Load("test.ind")
+	//fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 	fmt.Printf("Now searching with HNSW...\n")
 	timeRecord := make([]float64, TESTNUM)
@@ -60,7 +62,7 @@ func main() {
 	truth := make([][]uint32, TESTNUM)
 	// start := time.Now()
 	for i := 0; i < TESTNUM; i++ {
-		searchAttr := []string{provinces[rand.Intn(4)], types[rand.Intn(3)], titles[rand.Intn(2)]}
+		searchAttr := []string{provinces[rand.Intn(4)], types[rand.Intn(3)], titles[rand.Intn(2)], a[rand.Intn(2)], b[rand.Intn(2)]}
 		fmt.Printf("Generating queries and calculating true answers using bruteforce search...\n")
 
 		queries[i] = randomPoint()
@@ -68,7 +70,9 @@ func main() {
 		truth[i] = make([]uint32, K)
 		for j := K - 1; j >= 0; j-- {
 			item := resultTruth.Pop()
-			truth[i][j] = item.ID
+			if item != nil {
+				truth[i][j] = item.ID
+			}
 		}
 
 		startSearch := time.Now()
