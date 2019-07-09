@@ -28,7 +28,7 @@ type node struct {
 	sync.RWMutex
 	locked     bool
 	p          Point
-	friends    [][]uint32 // map[int][]uint32 int:属性的ID
+	friends    map[int][]uint32 // map[int][]uint32 int:属性的ID
 	attributes []string
 }
 
@@ -51,8 +51,167 @@ type Hnsw struct {
 	attributeLink  AttributeLink
 }
 
+//// Load opens a index file previously written by Save(). Returns a new index and the timestamp the file was written
+//func Load(filename string) (*Hnsw, int64, error) {
+//	f, err := os.Open(filename)
+//	if err != nil {
+//		return nil, 0, err
+//	}
+//	z, err := gzip.NewReader(f)
+//	if err != nil {
+//		return nil, 0, err
+//	}
+//
+//	timestamp := readInt64(z)
+//
+//	h := new(Hnsw)
+//	h.M = readInt32(z)
+//	h.efConstruction = readInt32(z)
+//	h.linkMode = readInt32(z)
+//	h.DelaunayType = readInt32(z)
+//	h.enterpoint = uint32(readInt32(z))
+//	h.distType = readInt32(z)
+//	if h.distType == 1 {
+//		h.DistFunc = f32.L2Squared8AVX
+//	} else if h.distType == 2 {
+//		h.DistFunc = cosd.Cosd
+//	}
+//
+//	// Read attributes
+//	h.attributeLink.IDCount = readInt32(z)
+//	l := int(readInt32(z))
+//	tempMap := readAttrString(z, l)
+//	for k, v := range tempMap {
+//		h.attributeLink.attrString.Store(k, v)
+//	}
+//
+//	h.bitset = bitsetpool.New()
+//
+//	l = readInt32(z)
+//	h.nodes = make([]node, l)
+//
+//	for i := range h.nodes {
+//
+//		l := readInt32(z)
+//		h.nodes[i].p = make([]float32, l)
+//
+//		err = binary.Read(z, binary.LittleEndian, h.nodes[i].p)
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		// Read friends
+//		l = readInt32(z)
+//		bt := make([]byte, int(l))
+//		err := binary.Read(z, binary.LittleEndian, &bt)
+//		if err != nil {
+//			panic(err)
+//		}
+//		var friends [][]uint32
+//		err = json.Unmarshal(bt, &friends)
+//		if err != nil {
+//			panic(err)
+//		}
+//		h.nodes[i].friends = friends
+//
+//		// Read attributes (can be deleted in product mode)
+//		l = readInt32(z)
+//		bt = make([]byte, int(l))
+//		err = binary.Read(z, binary.LittleEndian, &bt)
+//		if err != nil {
+//			panic(err)
+//		}
+//		var attributes []string
+//		err = json.Unmarshal(bt, &attributes)
+//		if err != nil {
+//			panic(err)
+//		}
+//		h.nodes[i].attributes = attributes
+//	}
+//
+//	_ = z.Close()
+//	_ = f.Close()
+//
+//	return h, timestamp, nil
+//}
+//
+//// Save writes to current index to a gzipped binary data file
+//func (h *Hnsw) Save(filename string) error {
+//	f, err := os.Create(filename)
+//	if err != nil {
+//		return err
+//	}
+//	z := gzip.NewWriter(f)
+//
+//	timestamp := time.Now().Unix()
+//
+//	writeInt64(timestamp, z)
+//
+//	writeInt32(h.M, z)
+//	writeInt32(h.efConstruction, z)
+//	writeInt32(h.linkMode, z)
+//	writeInt32(h.DelaunayType, z)
+//	writeInt32(int(h.enterpoint), z)
+//	writeInt32(h.distType, z)
+//
+//	// Write attributes
+//	writeInt32(h.attributeLink.IDCount, z)
+//	tempMap := make(map[string]int)
+//	h.attributeLink.attrString.Range(func(k, v interface{}) bool {
+//		tempMap[k.(string)] = v.(int)
+//		return true
+//	})
+//
+//	writeAttrString(tempMap, z)
+//
+//	l := len(h.nodes)
+//	writeInt32(l, z)
+//
+//	for _, n := range h.nodes {
+//		l := len(n.p)
+//		writeInt32(l, z)
+//		err = binary.Write(z, binary.LittleEndian, []float32(n.p))
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		// Write friends
+//		res, err := json.Marshal(n.friends)
+//		if err != nil {
+//			panic(err)
+//		}
+//		err = binary.Write(z, binary.LittleEndian, int32(len(res)))
+//		if err != nil {
+//			panic(err)
+//		}
+//		err = binary.Write(z, binary.LittleEndian, &res)
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		// Write attributes (can be deleted in product mode)
+//		res, err = json.Marshal(n.attributes)
+//		if err != nil {
+//			panic(err)
+//		}
+//		err = binary.Write(z, binary.LittleEndian, int32(len(res)))
+//		if err != nil {
+//			panic(err)
+//		}
+//		err = binary.Write(z, binary.LittleEndian, &res)
+//		if err != nil {
+//			panic(err)
+//		}
+//	}
+//
+//	_ = z.Close()
+//	_ = f.Close()
+//
+//	return nil
+//}
+
 // Load opens a index file previously written by Save(). Returns a new index and the timestamp the file was written
-func Load(filename string) (*Hnsw, int64, error) {
+func Load(filename string, product bool) (*Hnsw, int64, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, 0, err
@@ -70,6 +229,7 @@ func Load(filename string) (*Hnsw, int64, error) {
 	h.linkMode = readInt32(z)
 	h.DelaunayType = readInt32(z)
 	h.enterpoint = uint32(readInt32(z))
+
 	h.distType = readInt32(z)
 	if h.distType == 1 {
 		h.DistFunc = f32.L2Squared8AVX
@@ -84,7 +244,6 @@ func Load(filename string) (*Hnsw, int64, error) {
 	for k, v := range tempMap {
 		h.attributeLink.attrString.Store(k, v)
 	}
-
 	h.bitset = bitsetpool.New()
 
 	l = readInt32(z)
@@ -107,26 +266,29 @@ func Load(filename string) (*Hnsw, int64, error) {
 		if err != nil {
 			panic(err)
 		}
-		var friends [][]uint32
+		var friends map[int][]uint32
 		err = json.Unmarshal(bt, &friends)
 		if err != nil {
 			panic(err)
 		}
 		h.nodes[i].friends = friends
 
-		// Read attributes (can be deleted in product mode)
-		l = readInt32(z)
-		bt = make([]byte, int(l))
-		err = binary.Read(z, binary.LittleEndian, &bt)
-		if err != nil {
-			panic(err)
+
+		// Read attributes (not in product mode)
+		if product == false {
+			l = readInt32(z)
+			bt = make([]byte, int(l))
+			err = binary.Read(z, binary.LittleEndian, &bt)
+			if err != nil {
+				panic(err)
+			}
+			var attributes []string
+			err = json.Unmarshal(bt, &attributes)
+			if err != nil {
+				panic(err)
+			}
+			h.nodes[i].attributes = attributes
 		}
-		var attributes []string
-		err = json.Unmarshal(bt, &attributes)
-		if err != nil {
-			panic(err)
-		}
-		h.nodes[i].attributes = attributes
 	}
 
 	_ = z.Close()
@@ -136,7 +298,7 @@ func Load(filename string) (*Hnsw, int64, error) {
 }
 
 // Save writes to current index to a gzipped binary data file
-func (h *Hnsw) Save(filename string) error {
+func (h *Hnsw) Save(filename string, product bool) error {
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -189,18 +351,20 @@ func (h *Hnsw) Save(filename string) error {
 			panic(err)
 		}
 
-		// Write attributes (can be deleted in product mode)
-		res, err = json.Marshal(n.attributes)
-		if err != nil {
-			panic(err)
-		}
-		err = binary.Write(z, binary.LittleEndian, int32(len(res)))
-		if err != nil {
-			panic(err)
-		}
-		err = binary.Write(z, binary.LittleEndian, &res)
-		if err != nil {
-			panic(err)
+		// Write attributes (not in product mode)
+		if product == false {
+			res, err = json.Marshal(n.attributes)
+			if err != nil {
+				panic(err)
+			}
+			err = binary.Write(z, binary.LittleEndian, int32(len(res)))
+			if err != nil {
+				panic(err)
+			}
+			err = binary.Write(z, binary.LittleEndian, &res)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
@@ -469,7 +633,7 @@ func New(M int, efConstruction int, first Point, distString string) *Hnsw {
 
 
 	// add first point, it will be our enterpoint (index 0)
-	h.nodes = []node{{p: first, friends: make([][]uint32, 100)}}
+	h.nodes = []node{{p: first, friends: make(map[int][]uint32)}}
 	h.attributeLink = AttributeLink{
 		IDCount:    0,
 		attrString: sync.Map{},
@@ -533,6 +697,10 @@ func (h *Hnsw) GetNodeAttr(id uint32) []string {
 	return h.nodes[id].attributes
 }
 
+func (h *Hnsw) GetNodeLen() int {
+	return len(h.nodes)
+}
+
 func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 	if id == 0 {
 		panic("Id 0 is reserved, use ID:s starting from 1 when building index")
@@ -542,7 +710,7 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 
 	// assume Grow has been called in advance
 	newID := id
-	newNode := node{p: q, friends: make([][]uint32, 1000), attributes: attributes}
+	newNode := node{p: q, friends: make(map[int][]uint32), attributes: attributes}
 
 	n := uint(len(attributes))
 	var maxCount uint = 1 << n
@@ -598,8 +766,7 @@ func (h *Hnsw) Add(q Point, id uint32, attributes []string) {
 		} else {
 			attrID = h.attributeLink.IDCount
 			h.attributeLink.attrString.Store(attrString, attrID)
-			h.nodes[0].friends = append(h.nodes[0].friends, make([]uint32, 0))
-			//newNode.friends = append(newNode.friends, make([]uint32, 0))
+			//h.nodes[0].friends = append(h.nodes[0].friends, make([]uint32, 0))
 			h.nodes[0].friends[attrID] = append(h.nodes[0].friends[attrID], newID)
 			h.attributeLink.IDCount += 1
 		}
