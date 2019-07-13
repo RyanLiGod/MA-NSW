@@ -102,7 +102,7 @@ func main() {
 			h.Grow(NUM3)
 
 			fmt.Println("Index loading: " + preType + "_" + strconv.FormatInt(int64(MList[l]), 10) + "_" + strconv.FormatInt(int64(efCList[l]), 10) + ".ind")
-			h, timestamp, _ := hnsw.Load("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(int64(MList[l]), 10) + "_" + strconv.FormatInt(int64(efCList[l]), 10) + ".ind")
+			h, timestamp, _ := hnsw.Load("ind/" + preType + "/" + preType + "_" + strconv.FormatInt(int64(MList[l]), 10) + "_" + strconv.FormatInt(int64(efCList[l]), 10) + ".ind", true)
 			fmt.Printf("Index loaded, time saved was %v\n", time.Unix(timestamp, 0))
 
 			fmt.Printf("Now searching with HNSW...\n")
