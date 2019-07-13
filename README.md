@@ -56,7 +56,7 @@ func main() {
 	}
 
 	fmt.Println("Saving index...")
-	err := h.Save("test.ind")
+	err := h.Save("test.ind", true)  //true: product mode
 	if err != nil {
 		panic("Save error!")
 	}
