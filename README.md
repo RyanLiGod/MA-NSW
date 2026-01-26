@@ -1,5 +1,7 @@
 # MA-NSW
 
+https://onlinelibrary.wiley.com/doi/10.1002/cpe.5970
+
 MA-NSW is a GO implementation of the **multiple attribute** HNSW approximate nearest-neighbour search algorithm based on HNSW (Implemented in C++ in https://github.com/searchivarius/nmslib and described in https://arxiv.org/abs/1603.09320)
 
 ## Usage
